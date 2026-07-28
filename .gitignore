@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables — NEVER commit secrets
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pino-pretty-*.log
+
+# Docker volumes (local dev)
+data/
+mongo-data/
+redis-data/
+
+# Misc
+*.tgz
+.cache/

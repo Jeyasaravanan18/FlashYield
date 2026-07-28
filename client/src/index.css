@@ -1,0 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface-100 text-surface-950 font-sans;
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::selection {
+    @apply bg-brand-500/20 text-brand-600;
+  }
+}
+
+@layer components {
+  /* ── Modern Card ── */
+  .card {
+    @apply bg-white border border-surface-200 rounded-2xl shadow-sm 
+           hover:shadow-md transition-shadow duration-300;
+  }
+
+  /* ── Headers & Panels ── */
+  .glass-header {
+    @apply bg-white/80 backdrop-blur-xl border-b border-surface-200/60 shadow-sm;
+  }
+  
+  .glass-panel {
+    @apply bg-white border border-surface-200 rounded-2xl shadow-sm;
+  }
+
+  /* ── Ticket Card ── */
+  .ticket-card {
+    @apply relative bg-white text-surface-950 rounded-2xl shadow-sm border border-surface-200
+           hover:border-brand-400 hover:shadow-lg transition-all duration-300;
+  }
+  .ticket-card:hover {
+    transform: translateY(-2px);
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           font-bold text-sm uppercase tracking-wider rounded-xl
+           transition-all duration-200 ease-out
+           focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed border border-transparent
+           active:scale-[0.97];
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-b from-brand-400 to-brand-500 text-white 
+           hover:from-brand-500 hover:to-brand-600 
+           shadow-md shadow-brand-500/25 hover:shadow-lg hover:shadow-brand-500/30;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface-900 text-white
+           hover:bg-surface-800 shadow-sm hover:shadow-md;
+  }
+
+  .btn-ghost {
+    @apply btn text-surface-600 hover:text-brand-500 hover:bg-surface-100 border-transparent;
+  }
+
+  .btn-danger {
+    @apply btn bg-white text-red-600 border border-red-200
+           hover:bg-red-50 hover:border-red-300;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-xs rounded-lg;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-base rounded-xl;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full px-4 py-3 bg-white border border-surface-200
+           rounded-xl text-surface-950 text-sm font-medium
+           placeholder:text-surface-400
+           focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400
+           transition-all duration-200;
+  }
+
+  .label {
+    @apply block text-xs font-bold text-surface-500 mb-2 uppercase tracking-wider;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider;
+  }
+
+  .badge-success {
+    @apply badge bg-emerald-100 text-emerald-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-100 text-red-700;
+  }
+
+  .badge-neutral {
+    @apply badge bg-surface-100 text-surface-600;
+  }
+
+  /* ── Skeleton ── */
+  .skeleton {
+    @apply bg-surface-200/60 animate-pulse rounded-xl;
+  }
+
+  /* ── Page Container ── */
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-400;
+}

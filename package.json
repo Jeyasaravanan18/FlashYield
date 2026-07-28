@@ -1,0 +1,26 @@
+{
+  "name": "food-saver-direct-connect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hyper-local surplus-food marketplace – merchants list end-of-day surplus, customers claim in real time, pick up in-store with a digital token.",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "build:client": "npm run build --workspace=client",
+    "test:server": "npm test --workspace=server",
+    "test:client": "npm test --workspace=client",
+    "lint:server": "npm run lint --workspace=server",
+    "lint:client": "npm run lint --workspace=client",
+    "typecheck": "npm run typecheck --workspace=server && npm run typecheck --workspace=client",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
