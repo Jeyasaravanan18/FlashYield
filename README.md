@@ -1,15 +1,10 @@
-# ⚡ FlashYield — Hyper-Local Surplus Food Marketplace
+# FlashYield — Hyper-Local Surplus Food Marketplace
 
 > **Direct-Connect Marketplace Eliminating Food Waste with Real-Time Deals & Verified Digital Tokens.**
 
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-19.0.0-blue.svg)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
-
 ---
 
-## 📖 Executive Summary
+## Executive Summary
 
 **FlashYield** (formerly *Food Saver – Direct Connect*) is an enterprise-grade, hyper-local marketplace that bridges local merchants (bakeries, restaurants, grocery stores, dairy bars, fruit markets) with consumers to eliminate end-of-day surplus food waste. 
 
@@ -17,7 +12,7 @@ Merchants list fresh surplus bundles at discounted rates with strict claim windo
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -77,7 +72,7 @@ graph TD
 
 ---
 
-## 🔄 Core Application Workflows
+## Core Application Workflows
 
 ### 1. Merchant Listing & Inventory Lifecycle Workflow
 
@@ -126,7 +121,7 @@ flowchart TD
 
 ---
 
-## 🛠️ Technology Stack & Key Libraries
+## Technology Stack & Key Libraries
 
 ### **Frontend Stack**
 - **Framework**: React 19 + TypeScript + Vite 6
@@ -148,7 +143,7 @@ flowchart TD
 
 ---
 
-## 🔌 API Endpoints Reference
+## API Endpoints Reference
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
@@ -166,7 +161,7 @@ flowchart TD
 
 ---
 
-## 🚀 Quickstart & Local Setup
+## Quickstart & Local Setup
 
 ### 1. Clone & Install Dependencies
 
@@ -223,7 +218,7 @@ Open your browser at [`http://localhost:5173`](http://localhost:5173).
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## Testing & Quality Assurance
 
 ```bash
 # Run unit & integration tests for server
@@ -238,7 +233,7 @@ npm run typecheck
 
 ---
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 Run the complete multi-container setup with MongoDB & Redis:
 
@@ -252,7 +247,7 @@ npm run docker:down
 
 ---
 
-## 🛡️ Production & Security Best Practices
+## Production & Security Best Practices
 
 1. **Geospatial Indexing**: Utilizes MongoDB `2dsphere` indexes on `location` coordinates `[longitude, latitude]` for sub-millisecond proximity queries.
 2. **Atomic Quantity Claims**: Prevents race conditions and over-booking using MongoDB atomic `$inc` operators.
