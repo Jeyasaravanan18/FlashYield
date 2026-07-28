@@ -2,7 +2,6 @@
 
 > **Direct-Connect Marketplace Eliminating Food Waste with Real-Time Deals & Verified Digital Tokens.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19.0.0-blue.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
@@ -259,9 +258,3 @@ npm run docker:down
 2. **Atomic Quantity Claims**: Prevents race conditions and over-booking using MongoDB atomic `$inc` operators.
 3. **Graceful Fallbacks**: Features automatic fallback to `ioredis-mock` when a standalone Redis instance is unavailable in lightweight environments.
 4. **Rate Limiting & Protection**: Enforces rate limits on authentication and token verification routes using Redis/In-Memory stores.
-
----
-
-## 📜 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
