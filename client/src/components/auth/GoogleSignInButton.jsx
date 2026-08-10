@@ -33,9 +33,9 @@ function GoogleSignInButton({ onCredential, disabled = false }) {
     /* @__PURE__ */ jsx("code", { children: "VITE_GOOGLE_CLIENT_ID" }),
     " is configured."
   ] });
-  return /* @__PURE__ */ jsxs("div", { className: "min-h-10", children: [
+  return /* @__PURE__ */ jsxs("div", { className: "min-h-10 flex flex-col items-center justify-center", children: [
     /* @__PURE__ */ jsx("div", { ref: containerRef, className: disabled ? "pointer-events-none opacity-50" : "" }),
-    !loaded && /* @__PURE__ */ jsxs("div", { className: "flex h-10 items-center justify-center gap-2 rounded-lg border border-surface-200 text-sm text-surface-500", children: [
+    !loaded && /* @__PURE__ */ jsxs("div", { className: "flex h-10 w-full max-w-[320px] items-center justify-center gap-2 rounded-lg border border-surface-200 text-sm text-surface-500", children: [
       /* @__PURE__ */ jsx(Globe2, { className: "w-4 h-4" }),
       "Loading Google\u2026"
     ] })

@@ -161,7 +161,7 @@ function AuthModal() {
           }
         )
       ] }),
-      mode === "login" && /* @__PURE__ */ jsxs(Fragment, { children: [
+      /* @__PURE__ */ jsxs(Fragment, { children: [
         /* @__PURE__ */ jsxs("div", { className: "my-5 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-surface-400", children: [
           /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" }),
           "or",

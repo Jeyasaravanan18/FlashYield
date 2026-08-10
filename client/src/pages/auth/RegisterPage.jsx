@@ -1,9 +1,10 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useRegister } from "../../api/hooks";
+import { useGoogleLogin, useRegister } from "../../api/hooks";
 import { getErrorMessage } from "../../lib/api";
 import { Loader2, Leaf, Store, ShoppingBag } from "lucide-react";
+import { GoogleSignInButton } from "../../components/auth/GoogleSignInButton";
 function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -11,6 +12,7 @@ function RegisterPage() {
   const [error, setError] = useState("");
   const [passwordTouched, setPasswordTouched] = useState(false);
   const register = useRegister();
+  const googleLogin = useGoogleLogin();
   const navigate = useNavigate();
   const passwordOk = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,128}$/.test(password);
   const handleSubmit = async (e) => {
@@ -34,6 +36,17 @@ function RegisterPage() {
         }
       }
     );
+  };
+  const handleGoogleLogin = (credential) => {
+    setError("");
+    googleLogin.mutate(credential, {
+      onSuccess: (data) => {
+        const r = data.user.role;
+        if (r === "merchant") navigate("/merchant/onboarding");
+        else navigate("/");
+      },
+      onError: (err) => setError(getErrorMessage(err))
+    });
   };
   return /* @__PURE__ */ jsx("div", { className: "min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-gradient-to-br from-surface-100 via-white to-brand-500/5", children: /* @__PURE__ */ jsxs("div", { className: "w-full max-w-sm animate-fade-in", children: [
     /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-center mb-8", children: [
@@ -110,14 +123,22 @@ function RegisterPage() {
         {
           type: "submit",
           className: "btn-primary w-full py-3.5",
-          disabled: register.isPending,
+          disabled: register.isPending || googleLogin.isPending,
           children: register.isPending ? /* @__PURE__ */ jsxs("span", { className: "flex items-center justify-center gap-2", children: [
             /* @__PURE__ */ jsx(Loader2, { className: "w-4 h-4 animate-spin" }),
             "Creating account..."
           ] }) : "Create Account"
         }
       )
-    ] }) }),
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "my-5 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-surface-400", children: [
+      /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" }),
+      "or",
+      /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" })
+    ] }),
+    /* @__PURE__ */ jsx(GoogleSignInButton, { onCredential: handleGoogleLogin, disabled: register.isPending || googleLogin.isPending }),
+    googleLogin.isPending && /* @__PURE__ */ jsx("p", { className: "mt-3 text-center text-xs text-surface-500", children: "Signing in with Google\u2026" })
+    ] }),
     /* @__PURE__ */ jsxs("p", { className: "text-center mt-6 text-sm text-surface-400", children: [
       "Already have an account?",
       " ",
