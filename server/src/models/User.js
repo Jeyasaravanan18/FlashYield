@@ -6,11 +6,9 @@ const userSchema = new Schema(
     email: {
       type: String,
       required: [true, "Email is required"],
-      unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
-      index: true
+      match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"]
     },
     passwordHash: {
       type: String,
@@ -20,10 +18,7 @@ const userSchema = new Schema(
     },
     googleSubject: {
       type: String,
-      unique: true,
-      sparse: true,
-      default: null,
-      index: true
+      default: null
     },
     role: {
       type: String,
@@ -83,6 +78,11 @@ const userSchema = new Schema(
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.passwordHash);
 };
+userSchema.index({ email: 1, role: 1 }, { unique: true });
+userSchema.index(
+  { googleSubject: 1, role: 1 }, 
+  { unique: true, partialFilterExpression: { googleSubject: { $type: "string" } } }
+);
 const User = mongoose.model("User", userSchema);
 export {
   User
