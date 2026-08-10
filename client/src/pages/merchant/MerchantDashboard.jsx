@@ -27,7 +27,8 @@ import {
   PackageSearch,
   FileText,
   Users,
-  ChevronRight
+  ChevronRight,
+  Store
 } from "lucide-react";
 
 function MerchantDashboard() {
@@ -49,10 +50,24 @@ function MerchantDashboard() {
     });
   }
 
-  if (dashError || listError || analyticsError || !dashboard) {
-    return jsx(StatePanel, {
-      title: "Merchant console unavailable",
-      subtitle: "The dashboard could not be loaded. Check the backend connection and refresh."
+  if (dashError || !dashboard?.profile) {
+    return jsxs("div", {
+      className: "min-h-screen bg-surface-100 flex items-center justify-center p-6",
+      children: jsxs("div", {
+        className: "card max-w-md w-full p-8 text-center animate-fade-in shadow-xl",
+        children: [
+          jsx("div", { className: "mx-auto mb-4 w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600", children: jsx(Store, { className: "w-7 h-7" }) }),
+          jsx("h2", { className: "text-2xl font-bold text-surface-900", children: "Set Up Your Store Profile" }),
+          jsx("p", { className: "mt-2 text-sm text-surface-500", children: "You're logged in as a merchant, but your store details haven't been registered yet. Complete your profile to start posting surplus food!" }),
+          jsxs("div", {
+            className: "mt-6 flex flex-col gap-3",
+            children: [
+              jsx(Link, { to: "/merchant/onboarding", className: "btn-primary w-full py-3", children: "Set Up Store Now" }),
+              jsx(Link, { to: "/", className: "text-sm text-surface-400 hover:text-surface-600", children: "Back to Home" })
+            ]
+          })
+        ]
+      })
     });
   }
 
