@@ -40,10 +40,14 @@ function VerifyEmailPage() {
       setError("Enter your email to resend the code.");
       return;
     }
+    setError("");
     resendVerification.mutate(
       { email, role },
       {
-        onSuccess: (data) => setMessage(data.message || "Verification code resent."),
+        onSuccess: (data) => {
+          setError("");
+          setMessage(data.message || "Verification code resent.");
+        },
         onError: (err) => setError(getErrorMessage(err))
       }
     );
