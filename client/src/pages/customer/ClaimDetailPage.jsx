@@ -93,7 +93,7 @@ function ClaimDetailPage() {
               /* @__PURE__ */ jsx(Clock, { className: "w-3 h-3" }),
               " Expires In"
             ] }),
-            /* @__PURE__ */ jsx("div", { className: `font-display text-3xl sm:text-4xl font-bold ${isReserved ? countdown.urgent ? "text-red-400" : "text-brand-400" : "text-surface-600"}`, children: isReserved ? countdown.label.replace("h ", ":").replace("m", "") : "\u2014" })
+            /* @__PURE__ */ jsx("div", { className: `font-display text-3xl sm:text-4xl font-bold ${isReserved ? countdown.urgent ? "text-red-400" : "text-brand-400" : "text-surface-600"}`, children: isReserved ? countdown.label : "\u2014" })
           ] })
         ] }),
         isReserved && /* @__PURE__ */ jsxs("div", { className: "mt-8 pt-8 border-t border-white/10", children: [
@@ -115,7 +115,7 @@ function ClaimDetailPage() {
     ] }),
     /* @__PURE__ */ jsx("div", { className: "grid sm:grid-cols-3 gap-4 mt-8", children: [
       { step: "01", title: "Head to counter", desc: listing?.merchant?.address ?? "Your Storefront" },
-      { step: "02", title: "Show your token", desc: `Present: ${shortToken(claim.token)}` },
+      { step: "02", title: "Show your token", desc: `Present: ${shortToken(claim.token)} · ${claim.quantity || 1} item${(claim.quantity || 1) > 1 ? "s" : ""}` },
       { step: "03", title: "Collect bundle", desc: "Cashier confirms and hands over" }
     ].map((item) => /* @__PURE__ */ jsxs("div", { className: "card p-6", children: [
       /* @__PURE__ */ jsx("div", { className: "w-8 h-8 rounded-full bg-brand-50 text-brand-500 flex items-center justify-center text-sm font-bold mb-3", children: item.step }),

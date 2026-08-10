@@ -23,12 +23,14 @@ router.post(
       const result = await claimService.createClaim(
         req.user.userId,
         req.body.listingId,
+        req.body.quantity,
         idempotencyKey
       );
       res.status(201).json({
         claim: result.claim,
         token: result.token,
-        message: "Claim successful! Show this token at the store for pickup."
+        message: "Claim successful! Show this token at the store for pickup.",
+        quantity: req.body.quantity
       });
     } catch (err) {
       next(err);

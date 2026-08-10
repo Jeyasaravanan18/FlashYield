@@ -53,6 +53,7 @@ function ClaimRow({ claim }) {
           /* @__PURE__ */ jsx("h3", { className: "font-display text-xl sm:text-2xl font-bold text-surface-900 leading-tight mb-1.5 truncate", children: listing?.title ?? "Bundle" }),
           /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
             /* @__PURE__ */ jsx("code", { className: "text-xs font-medium text-surface-400 bg-surface-100 px-2 py-0.5 rounded-md", children: claim.token.length > 12 ? `${claim.token.slice(0, 8)}\u2026` : claim.token }),
+            /* @__PURE__ */ jsx("span", { className: "text-xs font-medium text-surface-400 bg-surface-100 px-2 py-0.5 rounded-md", children: `${claim.quantity || 1} item${(claim.quantity || 1) > 1 ? "s" : ""}` }),
             isReserved && /* @__PURE__ */ jsx("span", { className: "badge-success text-[10px]", children: "Active" }),
             claim.status === "collected" && /* @__PURE__ */ jsx("span", { className: "badge-neutral text-[10px]", children: "Collected" }),
             claim.status === "expired" && /* @__PURE__ */ jsx("span", { className: "badge-danger text-[10px]", children: "Expired" })
@@ -61,7 +62,7 @@ function ClaimRow({ claim }) {
         /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-4 shrink-0 ml-4", children: [
           /* @__PURE__ */ jsxs("div", { className: "text-right", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs font-medium text-surface-400 mb-0.5", children: isReserved ? "Expires" : "Status" }),
-            /* @__PURE__ */ jsx("div", { className: `font-display text-2xl sm:text-3xl font-bold leading-none ${isReserved ? countdown.urgent ? "text-red-500" : "text-brand-500" : "text-surface-300"}`, children: isReserved ? countdown.label.replace("h ", ":").replace("m", "") : "\u2014" })
+            /* @__PURE__ */ jsx("div", { className: `font-display text-2xl sm:text-3xl font-bold leading-none ${isReserved ? countdown.urgent ? "text-red-500" : "text-brand-500" : "text-surface-300"}`, children: isReserved ? countdown.label : "\u2014" })
           ] }),
           /* @__PURE__ */ jsx(ArrowRight, { className: "w-4 h-4 text-surface-300 group-hover:text-brand-500 transition-colors" })
         ] })

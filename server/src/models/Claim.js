@@ -14,6 +14,12 @@ const claimSchema = new Schema(
       required: true,
       index: true
     },
+    quantity: {
+      type: Number,
+      required: true,
+      min: [1, "Quantity must be at least 1"],
+      default: 1
+    },
     token: {
       type: String,
       required: true,

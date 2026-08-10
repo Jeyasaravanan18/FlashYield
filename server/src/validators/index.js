@@ -145,7 +145,8 @@ const nearbyListingsQuerySchema = z.object({
   // Expected as a comma-separated string in query params
 });
 const createClaimSchema = z.object({
-  listingId: objectIdSchema
+  listingId: objectIdSchema,
+  quantity: z.coerce.number().int().min(1, "Quantity must be at least 1").optional().default(1)
 });
 const verifyTokenSchema = z.object({
   token: z.string().min(1, "Token is required")

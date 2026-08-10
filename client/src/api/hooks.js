@@ -166,10 +166,10 @@ function useMyWaitlist() {
 function useCreateClaim() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (listingId) => {
-      const res = await api.post("/claims", { listingId }, {
+    mutationFn: async ({ listingId, quantity = 1 }) => {
+      const res = await api.post("/claims", { listingId, quantity }, {
         headers: {
-          "X-Idempotency-Key": `${listingId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+          "X-Idempotency-Key": `${listingId}-${quantity}-${Date.now()}-${Math.random().toString(36).slice(2)}`
         }
       });
       return res.data;

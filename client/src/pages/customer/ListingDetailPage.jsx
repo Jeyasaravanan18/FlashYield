@@ -28,12 +28,17 @@ function ListingDetailPage() {
   const { user, openAuthModal } = useAuthStore();
   const countdown = useCountdown(listing?.claimWindowEnd ?? (/* @__PURE__ */ new Date()).toISOString());
   const [waitlisted, setWaitlisted] = useState(false);
+  const [claimQuantity, setClaimQuantity] = useState(1);
   useEffect(() => {
     if (id) {
       subscribeListing(id);
       return () => unsubscribeListing(id);
     }
   }, [id, subscribeListing, unsubscribeListing]);
+  useEffect(() => {
+    const maxQuantity = Math.max(1, listing?.quantityAvailable || 1);
+    setClaimQuantity((current) => Math.min(Math.max(1, current || 1), maxQuantity));
+  }, [listing?.quantityAvailable]);
   if (isLoading) {
     return /* @__PURE__ */ jsx("div", { className: "page-container flex justify-center py-20", children: /* @__PURE__ */ jsx("div", { className: "w-6 h-6 border-2 border-surface-200 border-t-brand-500 rounded-full animate-spin" }) });
   }
@@ -58,7 +63,7 @@ function ListingDetailPage() {
       openAuthModal();
       return;
     }
-    claimMutation.mutate(listing._id, {
+    claimMutation.mutate({ listingId: listing._id, quantity: claimQuantity }, {
       onSuccess: () => navigate("/claims")
     });
   };
@@ -150,6 +155,21 @@ function ListingDetailPage() {
         ] }),
         /* @__PURE__ */ jsxs("div", { className: "mt-auto pt-5", children: [
           claimMutation.error && /* @__PURE__ */ jsx("div", { className: "mb-3 text-sm text-red-600 bg-red-50 p-3 rounded-xl border border-red-200", children: claimMutation.error.response?.data?.error?.message || "Failed to claim" }),
+          /* @__PURE__ */ jsxs("div", { className: "mb-4 rounded-2xl border border-surface-200 bg-surface-50 p-4", children: [
+            /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3", children: [
+              /* @__PURE__ */ jsxs("div", { children: [
+                /* @__PURE__ */ jsx("p", { className: "text-xs text-surface-400 mb-0.5", children: "Booking quantity" }),
+                /* @__PURE__ */ jsx("p", { className: "text-sm font-semibold text-surface-900", children: "Choose full bundle or a smaller quantity" })
+              ] }),
+              /* @__PURE__ */ jsx("button", { type: "button", onClick: () => setClaimQuantity(Math.max(1, listing.quantityAvailable)), className: "text-xs font-semibold text-brand-500 hover:text-brand-600", children: "Full bundle" })
+            ] }),
+            /* @__PURE__ */ jsxs("div", { className: "mt-3 flex items-center gap-3", children: [
+              /* @__PURE__ */ jsx("button", { type: "button", onClick: () => setClaimQuantity((value) => Math.max(1, (value || 1) - 1)), disabled: claimQuantity <= 1, className: "h-10 w-10 rounded-xl border border-surface-200 bg-white text-lg font-bold text-surface-700 disabled:opacity-40", children: "−" }),
+              /* @__PURE__ */ jsx("input", { type: "number", min: "1", max: String(listing.quantityAvailable), value: claimQuantity, onChange: (e) => setClaimQuantity(Math.min(Math.max(1, Number(e.target.value) || 1), listing.quantityAvailable)), className: "input text-center font-semibold" }),
+              /* @__PURE__ */ jsx("button", { type: "button", onClick: () => setClaimQuantity((value) => Math.min(listing.quantityAvailable, (value || 1) + 1)), disabled: claimQuantity >= listing.quantityAvailable, className: "h-10 w-10 rounded-xl border border-surface-200 bg-white text-lg font-bold text-surface-700 disabled:opacity-40", children: "+" })
+            ] }),
+            /* @__PURE__ */ jsx("p", { className: "mt-2 text-xs text-surface-400", children: `${claimQuantity} of ${listing.quantityAvailable} available will be reserved under one pickup token.` })
+          ] }),
           /* @__PURE__ */ jsxs(
             "button",
             {
@@ -158,7 +178,7 @@ function ListingDetailPage() {
               onClick: handleClaim,
               children: [
                 /* @__PURE__ */ jsx(Zap, { className: "w-4 h-4" }),
-                claimMutation.isPending ? "Claiming..." : isExpired ? "Time window closed" : !isAvailable ? "Sold out" : "Claim this bundle"
+                claimMutation.isPending ? "Claiming..." : isExpired ? "Time window closed" : !isAvailable ? "Sold out" : claimQuantity === listing.quantityAvailable ? "Claim full bundle" : `Claim ${claimQuantity}`
               ]
             }
           ),

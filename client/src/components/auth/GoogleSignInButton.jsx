@@ -4,6 +4,8 @@ import { Globe2 } from "lucide-react";
 
 let googleScriptLoaded = false;
 let googleScriptLoading = false;
+let googleInitialized = false;
+let globalCallback = null;
 
 function GoogleSignInButton({ onCredential, disabled = false }) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -11,6 +13,11 @@ function GoogleSignInButton({ onCredential, disabled = false }) {
   const containerRef = useRef(null);
   const onCredentialRef = useRef(onCredential);
   onCredentialRef.current = onCredential;
+
+  useEffect(() => {
+    globalCallback = onCredentialRef.current;
+  }, [onCredential]);
+
   const [loaded, setLoaded] = useState(false);
   const isLocalhost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
@@ -20,15 +27,18 @@ function GoogleSignInButton({ onCredential, disabled = false }) {
     const renderBtn = () => {
       if (!window.google?.accounts?.id || !containerRef.current) return;
       try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: (response) => {
-            if (response?.credential && onCredentialRef.current) {
-              onCredentialRef.current(response.credential);
-            }
-          },
-          auto_select: false
-        });
+        if (!googleInitialized) {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response) => {
+              if (response?.credential && globalCallback) {
+                globalCallback(response.credential);
+              }
+            },
+            auto_select: false
+          });
+          googleInitialized = true;
+        }
         containerRef.current.replaceChildren();
         window.google.accounts.id.renderButton(containerRef.current, {
           theme: "outline",

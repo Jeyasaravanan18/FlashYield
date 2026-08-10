@@ -1,11 +1,11 @@
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useNearbyListings, useImpactStats } from "../../api/hooks";
+import { useNearbyListings } from "../../api/hooks";
 import { useCountdown } from "../../hooks/useCountdown";
 import { useLocationStore } from "../../store/locationStore";
 import { useFavoritesStore } from "../../store/favoritesStore";
-import { Search, Clock, MapPin, TrendingUp, Leaf, Star, Heart } from "lucide-react";
+import { Search, Clock, MapPin, Star, Heart } from "lucide-react";
 const CATEGORIES = [
   { id: "", label: "All" },
   { id: "bakery", label: "Bakery" },
@@ -25,7 +25,6 @@ function BrowsePage() {
   const [sortBy, setSortBy] = useState("distance");
   const [maxDistance, setMaxDistance] = useState("");
   const listingsQuery = useNearbyListings({ lng, lat, category: activeCategory || void 0, dietaryTags: activeTags });
-  const { data: impactStats } = useImpactStats();
   const listings = useMemo(() => {
     const raw = listingsQuery.data?.data ?? [];
     let filtered = raw.filter((l) => !searchQuery || l.title.toLowerCase().includes(searchQuery.toLowerCase()) || l.merchant?.businessName.toLowerCase().includes(searchQuery.toLowerCase())).filter((l) => showFavorites ? l.merchant && isFavorite(l.merchant._id) : true).filter((l) => maxDistance ? (l.distance ?? 0) <= maxDistance : true);
@@ -160,34 +159,27 @@ function BrowsePage() {
         /* @__PURE__ */ jsxs("div", { className: "card p-7 bg-gradient-to-br from-white to-surface-50", children: [
           /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-start mb-6", children: [
             /* @__PURE__ */ jsxs("h2", { className: "font-display text-2xl font-bold uppercase leading-tight text-surface-900", children: [
-              "Neighborhood",
+              "Quick",
               /* @__PURE__ */ jsx("br", {}),
-              "Impact"
+              "Pickup Guide"
             ] }),
             /* @__PURE__ */ jsx("span", { className: "badge-success", children: "Live" })
           ] }),
-          /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 gap-6 mb-6", children: [
-            /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsxs("div", { className: "text-xs font-medium text-surface-400 mb-1 flex items-center gap-1", children: [
-                /* @__PURE__ */ jsx(Leaf, { className: "w-3 h-3" }),
-                "Meals Rescued"
-              ] }),
-              /* @__PURE__ */ jsx("div", { className: "font-display text-4xl font-bold text-surface-900 leading-none", children: impactStats?.mealsRescued ?? 0 })
+          /* @__PURE__ */ jsxs("div", { className: "space-y-4 mb-6", children: [
+            /* @__PURE__ */ jsxs("div", { className: "rounded-xl border border-surface-200 bg-white p-4", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs font-medium text-surface-400 mb-1", children: "1. Search nearby" }),
+              /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-600", children: "Filter by category, distance, dietary tags, or favorites." })
             ] }),
-            /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsxs("div", { className: "text-xs font-medium text-surface-400 mb-1 flex items-center gap-1", children: [
-                /* @__PURE__ */ jsx(TrendingUp, { className: "w-3 h-3" }),
-                "Bundles At Risk"
-              ] }),
-              /* @__PURE__ */ jsx("div", { className: "font-display text-4xl font-bold text-brand-500 leading-none", children: impactStats?.activeBundles ?? liveBundles })
+            /* @__PURE__ */ jsxs("div", { className: "rounded-xl border border-surface-200 bg-white p-4", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs font-medium text-surface-400 mb-1", children: "2. Choose quantity" }),
+              /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-600", children: "Book the whole bundle or reserve only the quantity you want." })
+            ] }),
+            /* @__PURE__ */ jsxs("div", { className: "rounded-xl border border-surface-200 bg-white p-4", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs font-medium text-surface-400 mb-1", children: "3. Pick up on time" }),
+              /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-600", children: "Your token expires 30 minutes after booking, so collect promptly." })
             ] })
           ] }),
-          (impactStats?.totalSaved ?? 0) > 0 && /* @__PURE__ */ jsxs("div", { className: "bg-brand-50 border border-brand-200 rounded-xl px-4 py-3 text-sm text-brand-700 font-medium mb-5", children: [
-            "\u20B9",
-            impactStats?.totalSaved.toLocaleString(),
-            " saved by the community"
-          ] }),
-          /* @__PURE__ */ jsx(Link, { to: "/register", className: "btn-primary w-full py-3.5 text-sm flex justify-center", children: "List Your Surplus \u2192" })
+          /* @__PURE__ */ jsx(Link, { to: "/register", className: "btn-primary w-full py-3.5 text-sm flex justify-center", children: "Start claiming \u2192" })
         ] }),
         /* @__PURE__ */ jsxs("div", { className: "card p-7", children: [
           /* @__PURE__ */ jsx("h3", { className: "font-display text-xl font-bold uppercase mb-5 text-surface-900", children: "How It Works" }),
@@ -277,7 +269,7 @@ function ListingCard({ listing }) {
             /* @__PURE__ */ jsx(Clock, { className: "w-3 h-3" }),
             "Pickup Window"
           ] }),
-          /* @__PURE__ */ jsx("div", { className: `font-display text-3xl sm:text-4xl font-bold leading-none ${countdown.urgent ? "text-red-500" : "text-brand-500"}`, children: isClosed ? "CLOSED" : countdown.label.replace("h ", ":").replace("m", "") })
+          /* @__PURE__ */ jsx("div", { className: `font-display text-3xl sm:text-4xl font-bold leading-none ${countdown.urgent ? "text-red-500" : "text-brand-500"}`, children: isClosed ? "CLOSED" : countdown.label })
         ] }),
         /* @__PURE__ */ jsx(
           Link,

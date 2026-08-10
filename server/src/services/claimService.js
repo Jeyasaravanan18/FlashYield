@@ -16,6 +16,7 @@ import { auditService } from "./auditService.js";
 import { emitListingUpdate } from "../socket/emitter.js";
 import { Waitlist } from "../models/Waitlist.js";
 const CLAIM_LOCK_TTL_SECONDS = 5;
+const CLAIM_TOKEN_TTL_MINUTES = 30;
 async function acquireLock(key, ttlSeconds) {
   try {
     const redis = getRedisClient();
@@ -45,7 +46,7 @@ const claimService = {
    * 6. Release lock
    * 7. Emit real-time update
    */
-  async createClaim(customerId, listingId, idempotencyKey) {
+  async createClaim(customerId, listingId, quantity = 1, idempotencyKey) {
     const existingClaim = await Claim.findOne({ idempotencyKey });
     if (existingClaim) {
       logger.info({ idempotencyKey, claimId: existingClaim._id }, "Idempotent claim returned");
@@ -67,11 +68,11 @@ const claimService = {
         {
           _id: listingId,
           status: "active",
-          quantityAvailable: { $gt: 0 },
+          quantityAvailable: { $gte: quantity },
           claimWindowEnd: { $gt: /* @__PURE__ */ new Date() }
         },
         {
-          $inc: { quantityAvailable: -1 }
+          $inc: { quantityAvailable: -quantity }
         },
         { new: true }
       );
@@ -89,6 +90,9 @@ const claimService = {
         if (original.quantityAvailable <= 0 || original.status === "sold_out") {
           throw new GoneError("This listing is sold out");
         }
+        if (original.quantityAvailable < quantity) {
+          throw new ConflictError(`Only ${original.quantityAvailable} item${original.quantityAvailable === 1 ? "" : "s"} left`);
+        }
         throw new BadRequestError("Unable to claim this listing");
       }
       if (listing.quantityAvailable === 0) {
@@ -96,14 +100,16 @@ const claimService = {
         await listing.save();
       }
       const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + CLAIM_TOKEN_TTL_MINUTES * 60 * 1e3);
       const claim = await Claim.create({
         listingId: listing._id,
         customerId,
+        quantity,
         token,
         status: "reserved",
         idempotencyKey,
         claimedAt: /* @__PURE__ */ new Date(),
-        expiresAt: listing.claimWindowEnd
+        expiresAt
       });
       await auditService.log({
         action: "claim_created",
@@ -113,6 +119,7 @@ const claimService = {
         targetId: claim._id,
         metadata: {
           listingId: listing._id.toString(),
+          quantity,
           quantityRemaining: listing.quantityAvailable
         }
       });
@@ -155,7 +162,7 @@ const claimService = {
         status: { $in: ["active", "sold_out"] },
         claimWindowEnd: { $gt: /* @__PURE__ */ new Date() }
       },
-      { $inc: { quantityAvailable: 1 }, $set: { status: "active" } },
+      { $inc: { quantityAvailable: claim.quantity || 1 }, $set: { status: "active" } },
       { new: true }
     );
     claim.status = "cancelled";
@@ -288,12 +295,13 @@ const claimService = {
       actorRole: "merchant",
       targetType: "Claim",
       targetId: claim._id,
-      metadata: {
-        customerId: claim.customerId.toString(),
-        listingId: claim.listingId.toString()
-      },
-      ipAddress
-    });
+        metadata: {
+          customerId: claim.customerId.toString(),
+          listingId: claim.listingId.toString(),
+          quantity: claim.quantity || 1
+        },
+        ipAddress
+      });
     logger.info(
       { claimId: claim._id, merchantId: merchant._id },
       "Token verified \u2014 pickup collected"
