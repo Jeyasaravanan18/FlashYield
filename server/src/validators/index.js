@@ -95,6 +95,9 @@ const createListingSchema = z.object({
   message: "Claim window end must be after start",
   path: ["claimWindowEnd"]
 });
+const batchCreateListingSchema = z.object({
+  items: z.array(createListingSchema).min(1, "Batch must contain at least 1 item").max(50, "Batch cannot exceed 50 items")
+});
 const updateListingSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(2e3).optional(),
@@ -177,6 +180,7 @@ const objectIdParamSchema = z.object({
 });
 export {
   auditLogQuerySchema,
+  batchCreateListingSchema,
   createClaimSchema,
   createListingSchema,
   createMerchantProfileSchema,

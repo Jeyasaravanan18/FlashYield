@@ -458,7 +458,7 @@ function useForecast() {
 function useBatchUpload() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (items) => (await api.post("/merchants/features/batch-upload", { items })).data,
+    mutationFn: async (items) => (await api.post("/listings/batch", { items })).data,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["listings"] });
       queryClient.invalidateQueries({ queryKey: ["merchant"] });

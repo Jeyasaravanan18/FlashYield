@@ -6,6 +6,7 @@ import { validate } from "../middleware/validate.js";
 import {
   createListingSchema,
   updateListingSchema,
+  batchCreateListingSchema,
   nearbyListingsQuerySchema,
   objectIdParamSchema
 } from "../validators.js";
@@ -19,6 +20,20 @@ router.post(
     try {
       const listing = await listingService.createListing(req.user.userId, req.body);
       res.status(201).json(listing);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+router.post(
+  "/batch",
+  authenticate,
+  roleGuard("merchant"),
+  validate({ body: batchCreateListingSchema }),
+  async (req, res, next) => {
+    try {
+      const result = await listingService.createBatchListings(req.user.userId, req.body.items);
+      res.status(201).json(result);
     } catch (err) {
       next(err);
     }

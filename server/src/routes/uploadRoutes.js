@@ -4,7 +4,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { env } from "../config/env.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { roleGuard } from "../middleware/roleGuard.js";
-import { InternalServerError } from "../utils/errors.js";
+import { AppError } from "../utils/errors.js";
 
 const router = Router();
 
@@ -57,7 +57,7 @@ router.post(
         url: result.secure_url
       });
     } catch (err) {
-      next(new InternalServerError("Failed to upload image", err));
+      next(new AppError("Failed to upload image", 500, "INTERNAL_ERROR"));
     }
   }
 );

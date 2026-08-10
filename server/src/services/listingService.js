@@ -62,6 +62,66 @@ const listingService = {
     return listing;
   },
   /**
+   * Create multiple listings at once. Validates the merchant is approved.
+   */
+  async createBatchListings(merchantUserId, items) {
+    const merchant = await MerchantProfile.findOne({ userId: merchantUserId });
+    if (!merchant) {
+      throw new BadRequestError(
+        "Merchant profile not found. Please create a profile first."
+      );
+    }
+    if (merchant.verificationStatus !== "approved") {
+      throw new ForbiddenError(
+        "Your merchant account must be approved before creating listings"
+      );
+    }
+
+    const listingsToCreate = items.map(data => {
+      if (new Date(data.claimWindowEnd) <= new Date()) {
+        throw new BadRequestError(`Claim window end for ${data.title} must be in the future`);
+      }
+      const scheduledPublishAt = data.scheduledPublishAt ? new Date(data.scheduledPublishAt) : null;
+      const isScheduled = scheduledPublishAt && scheduledPublishAt > new Date();
+      
+      return {
+        merchantId: merchant._id,
+        title: data.title,
+        description: data.description,
+        imageUrl: data.imageUrl,
+        category: data.category,
+        dietaryTags: data.dietaryTags || [],
+        allergenInfo: data.allergenInfo || "",
+        handlingNotes: data.handlingNotes || "",
+        originalPrice: data.originalPrice,
+        discountedPrice: data.discountedPrice,
+        quantityTotal: data.quantityTotal,
+        quantityAvailable: data.quantityTotal,
+        claimWindowStart: data.claimWindowStart,
+        claimWindowEnd: data.claimWindowEnd,
+        scheduledPublishAt,
+        status: isScheduled ? "scheduled" : "active"
+      };
+    });
+
+    const createdListings = await Listing.insertMany(listingsToCreate);
+    
+    await auditService.log({
+      action: "batch_listing_created",
+      actorId: merchantUserId,
+      actorRole: "merchant",
+      targetType: "Listing",
+      metadata: { count: createdListings.length }
+    });
+    
+    logger.info(
+      { merchantId: merchant._id, count: createdListings.length },
+      "Batch listings created"
+    );
+    
+    return { items: createdListings, count: createdListings.length };
+  },
+  /**
    * Get active listings near a location using geo queries.
    * Queries by merchant location with $nearSphere via aggregation.
    */
