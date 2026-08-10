@@ -7,13 +7,15 @@ let googleScriptLoading = false;
 
 function GoogleSignInButton({ onCredential, disabled = false }) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const allowLocalGoogle = import.meta.env.VITE_GOOGLE_DEV_ALLOWED === "true";
   const containerRef = useRef(null);
   const onCredentialRef = useRef(onCredential);
   onCredentialRef.current = onCredential;
   const [loaded, setLoaded] = useState(false);
+  const isLocalhost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
   useEffect(() => {
-    if (!clientId || disabled) return;
+    if (!clientId || disabled || (isLocalhost && !allowLocalGoogle)) return;
 
     const renderBtn = () => {
       if (!window.google?.accounts?.id || !containerRef.current) return;
@@ -67,13 +69,13 @@ function GoogleSignInButton({ onCredential, disabled = false }) {
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [clientId, disabled]);
+  }, [clientId, disabled, allowLocalGoogle, isLocalhost]);
 
-  if (!clientId) {
+  if (!clientId || (isLocalhost && !allowLocalGoogle)) {
     return /* @__PURE__ */ jsxs("p", { className: "text-center text-xs text-surface-400", children: [
-      "Google sign-in is unavailable until ",
+      "Google sign-in is unavailable in local preview until ",
       /* @__PURE__ */ jsx("code", { children: "VITE_GOOGLE_CLIENT_ID" }),
-      " is configured."
+      " is configured for this origin."
     ] });
   }
 

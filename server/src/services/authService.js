@@ -1,53 +1,145 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 import { User } from "../models/User.js";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
-import {
-  BadRequestError,
-  UnauthorizedError,
-  ConflictError
-} from "../utils/errors.js";
+import { BadRequestError, UnauthorizedError, ConflictError } from "../utils/errors.js";
 import { auditService } from "./auditService.js";
+
 const BCRYPT_COST_FACTOR = 12;
+const OTP_TTL_MINUTES = 15;
+
 function createAuthResult(user) {
   return {
-    user: { id: user._id.toString(), email: user.email, role: user.role, emailVerified: user.emailVerified },
-    tokens: { accessToken: generateAccessToken(user), refreshToken: generateRefreshToken(user) }
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      emailVerified: user.emailVerified
+    },
+    tokens: {
+      accessToken: generateAccessToken(user),
+      refreshToken: generateRefreshToken(user)
+    }
   };
 }
+
 function generateAccessToken(user) {
   return jwt.sign(
-    {
-      userId: user._id.toString(),
-      role: user.role,
-      email: user.email
-    },
+    { userId: user._id.toString(), role: user.role, email: user.email },
     env.JWT_ACCESS_SECRET,
     { expiresIn: env.JWT_ACCESS_EXPIRY }
   );
 }
+
 function generateRefreshToken(user) {
   return jwt.sign(
-    {
-      userId: user._id.toString(),
-      tokenId: crypto.randomBytes(16).toString("hex")
-    },
+    { userId: user._id.toString(), tokenId: crypto.randomBytes(16).toString("hex") },
     env.JWT_REFRESH_SECRET,
     { expiresIn: env.JWT_REFRESH_EXPIRY }
   );
 }
-async function hashRefreshToken(token) {
-  return crypto.createHash("sha256").update(token).digest("hex");
+
+async function hashValue(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
+
+function generateOtp() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+function normalizeEmail(email) {
+  return email.trim().toLowerCase();
+}
+
+function buildOtpMessage({ purpose, code, minutes }) {
+  const heading = purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account";
+  const body =
+    purpose === "reset"
+      ? `Use this one-time code to reset your password: ${code}`
+      : `Use this one-time code to verify your email address: ${code}`;
+  return [
+    `Subject: ${heading}`,
+    "",
+    body,
+    "",
+    `This code expires in ${minutes} minutes.`,
+    "If you did not request this, you can ignore this email."
+  ].join("\n");
+}
+
+function getMailTransport() {
+  if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS || !env.SMTP_FROM) {
+    return null;
+  }
+  return nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT || 587,
+    secure: env.SMTP_SECURE ?? false,
+    auth: {
+      user: env.SMTP_USER,
+      pass: env.SMTP_PASS
+    }
+  });
+}
+
+async function sendOtpEmail(to, purpose, code) {
+  const transporter = getMailTransport();
+  const message = buildOtpMessage({ purpose, code, minutes: OTP_TTL_MINUTES });
+  if (!transporter) {
+    logger.warn({ to, purpose, code }, "SMTP not configured; OTP logged for local development");
+    return;
+  }
+  await transporter.sendMail({
+    from: env.SMTP_FROM,
+    to,
+    subject: purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account",
+    text: message
+  });
+}
+
+async function issueOtp(user, purpose) {
+  const code = generateOtp();
+  const codeHash = await hashValue(code);
+  const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+  if (purpose === "verify") {
+    user.emailVerificationCodeHash = codeHash;
+    user.emailVerificationCodeExpiresAt = expiresAt;
+  } else {
+    user.passwordResetCodeHash = codeHash;
+    user.passwordResetCodeExpiresAt = expiresAt;
+  }
+  await user.save();
+  await sendOtpEmail(user.email, purpose === "verify" ? "verify" : "reset", code);
+  return { expiresAt };
+}
+
+function assertOtpValid(user, purpose, code) {
+  const now = Date.now();
+  const hash = crypto.createHash("sha256").update(code).digest("hex");
+  if (purpose === "verify") {
+    if (!user.emailVerificationCodeHash || !user.emailVerificationCodeExpiresAt || user.emailVerificationCodeExpiresAt.getTime() < now) {
+      throw new BadRequestError("Verification code has expired. Request a new code.");
+    }
+    if (user.emailVerificationCodeHash !== hash) {
+      throw new BadRequestError("Invalid verification code");
+    }
+  } else {
+    if (!user.passwordResetCodeHash || !user.passwordResetCodeExpiresAt || user.passwordResetCodeExpiresAt.getTime() < now) {
+      throw new BadRequestError("Reset code has expired. Request a new code.");
+    }
+    if (user.passwordResetCodeHash !== hash) {
+      throw new BadRequestError("Invalid reset code");
+    }
+  }
+}
+
 const authService = {
-  /**
-   * Register a new user. Hashes password with bcrypt (cost 12).
-   * Returns user info and JWT token pair.
-   */
   async register(email, password, role = "customer", ipAddress) {
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = normalizeEmail(email);
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       throw new ConflictError("An account with this email already exists");
     }
@@ -56,18 +148,14 @@ const authService = {
     }
     const passwordHash = await bcrypt.hash(password, BCRYPT_COST_FACTOR);
     const user = await User.create({
-      email,
+      email: normalizedEmail,
       passwordHash,
       role,
       emailVerified: false
-      // TODO: implement email verification flow
     });
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-    const tokenHash = await hashRefreshToken(refreshToken);
-    user.refreshTokenHash = tokenHash;
-    user.lastLoginAt = /* @__PURE__ */ new Date();
-    await user.save();
+
+    await issueOtp(user, "verify");
+
     await auditService.log({
       action: "user_register",
       actorId: user._id,
@@ -77,23 +165,22 @@ const authService = {
       metadata: { email: user.email, role: user.role },
       ipAddress: ipAddress || null
     });
-    logger.info({ userId: user._id, role: user.role }, "User registered");
+    logger.info({ userId: user._id, role: user.role }, "User registered; verification code issued");
+
     return {
       user: {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
-        emailVerified: user.emailVerified
-      },
-      tokens: { accessToken, refreshToken }
+        emailVerified: user.emailVerified,
+        verificationRequired: true
+      }
     };
   },
-  /**
-   * Authenticate a user with email + password.
-   * Returns user info and JWT token pair.
-   */
+
   async login(email, password, ipAddress) {
-    const user = await User.findOne({ email }).select("+passwordHash");
+    const normalizedEmail = normalizeEmail(email);
+    const user = await User.findOne({ email: normalizedEmail }).select("+passwordHash");
     if (!user) {
       throw new UnauthorizedError("Invalid email or password");
     }
@@ -101,11 +188,15 @@ const authService = {
     if (!isMatch) {
       throw new UnauthorizedError("Invalid email or password");
     }
+    if (!user.emailVerified) {
+      await issueOtp(user, "verify");
+      throw new BadRequestError("Please verify your email before signing in. A new code has been sent.");
+    }
+
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
-    const tokenHash = await hashRefreshToken(refreshToken);
-    user.refreshTokenHash = tokenHash;
-    user.lastLoginAt = /* @__PURE__ */ new Date();
+    user.refreshTokenHash = await hashValue(refreshToken);
+    user.lastLoginAt = new Date();
     await user.save();
     await auditService.log({
       action: "user_login",
@@ -127,11 +218,7 @@ const authService = {
       tokens: { accessToken, refreshToken }
     };
   },
-  /**
-   * Exchanges a Google Identity Services ID token for a local session.
-   * Google tokeninfo verifies Google's signature; audience, issuer, expiry,
-   * and verified email are checked again before any local account is created.
-   */
+
   async loginWithGoogle(idToken, ipAddress) {
     if (!env.GOOGLE_CLIENT_ID) throw new BadRequestError("Google sign-in is not configured on this server");
     let token;
@@ -144,10 +231,10 @@ const authService = {
     }
     const isVerifiedEmail = token.email_verified === true || token.email_verified === "true";
     const trustedIssuer = token.iss === "accounts.google.com" || token.iss === "https://accounts.google.com";
-    if (token.aud !== env.GOOGLE_CLIENT_ID || !token.sub || !token.email || !isVerifiedEmail || !trustedIssuer || Number(token.exp) * 1e3 <= Date.now()) {
+    if (token.aud !== env.GOOGLE_CLIENT_ID || !token.sub || !token.email || !isVerifiedEmail || !trustedIssuer || Number(token.exp) * 1000 <= Date.now()) {
       throw new UnauthorizedError("Google sign-in token is invalid for this application");
     }
-    const email = token.email.toLowerCase();
+    const email = normalizeEmail(token.email);
     let user = await User.findOne({ $or: [{ googleSubject: token.sub }, { email }] }).select("+passwordHash");
     if (!user) {
       user = await User.create({
@@ -162,17 +249,21 @@ const authService = {
       user.emailVerified = true;
     }
     const result = createAuthResult(user);
-    user.refreshTokenHash = await hashRefreshToken(result.tokens.refreshToken);
-    user.lastLoginAt = /* @__PURE__ */ new Date();
+    user.refreshTokenHash = await hashValue(result.tokens.refreshToken);
+    user.lastLoginAt = new Date();
     await user.save();
-    await auditService.log({ action: "user_login", actorId: user._id, actorRole: user.role, targetType: "User", targetId: user._id, metadata: { email, provider: "google" }, ipAddress: ipAddress || null });
+    await auditService.log({
+      action: "user_login",
+      actorId: user._id,
+      actorRole: user.role,
+      targetType: "User",
+      targetId: user._id,
+      metadata: { email, provider: "google" },
+      ipAddress: ipAddress || null
+    });
     return result;
   },
-  /**
-   * Refresh tokens. Verifies the existing refresh token, checks the
-   * stored hash (rotation), and issues a new token pair.
-   * The old refresh token is invalidated.
-   */
+
   async refreshTokens(currentRefreshToken) {
     let decoded;
     try {
@@ -184,33 +275,25 @@ const authService = {
     if (!user) {
       throw new UnauthorizedError("User not found");
     }
-    const currentHash = await hashRefreshToken(currentRefreshToken);
+    const currentHash = await hashValue(currentRefreshToken);
     if (user.refreshTokenHash !== currentHash) {
       user.refreshTokenHash = null;
       await user.save();
-      logger.warn(
-        { userId: user._id },
-        "Refresh token reuse detected \u2014 all sessions invalidated"
-      );
+      logger.warn({ userId: user._id }, "Refresh token reuse detected — all sessions invalidated");
       throw new UnauthorizedError("Refresh token has been revoked (possible token theft detected)");
     }
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
-    const newHash = await hashRefreshToken(refreshToken);
-    user.refreshTokenHash = newHash;
+    user.refreshTokenHash = await hashValue(refreshToken);
     await user.save();
     return { accessToken, refreshToken };
   },
-  /**
-   * Logout — invalidates the stored refresh token hash.
-   */
+
   async logout(userId) {
     await User.findByIdAndUpdate(userId, { refreshTokenHash: null });
     logger.info({ userId }, "User logged out");
   },
-  /**
-   * Get user profile by ID.
-   */
+
   async getProfile(userId) {
     const user = await User.findById(userId);
     if (!user) {
@@ -224,8 +307,66 @@ const authService = {
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt
     };
+  },
+
+  async requestEmailVerification(email) {
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user) {
+      return { message: "If that email exists, a verification code has been sent." };
+    }
+    if (user.emailVerified) {
+      return { message: "Email is already verified." };
+    }
+    const { expiresAt } = await issueOtp(user, "verify");
+    return { message: "Verification code sent.", expiresAt };
+  },
+
+  async verifyEmail(email, code) {
+    const user = await User.findOne({ email: normalizeEmail(email) }).select("+emailVerificationCodeHash");
+    if (!user) {
+      throw new BadRequestError("Invalid verification request");
+    }
+    assertOtpValid(user, "verify", String(code));
+    user.emailVerified = true;
+    user.emailVerificationCodeHash = null;
+    user.emailVerificationCodeExpiresAt = null;
+    await user.save();
+    return { message: "Email verified successfully" };
+  },
+
+  async requestPasswordReset(email) {
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user) {
+      return { message: "If that email exists, a reset code has been sent." };
+    }
+    const { expiresAt } = await issueOtp(user, "reset");
+    return { message: "Password reset code sent.", expiresAt };
+  },
+
+  async resetPassword(email, code, newPassword) {
+    const user = await User.findOne({ email: normalizeEmail(email) }).select("+passwordHash +passwordResetCodeHash");
+    if (!user) {
+      throw new BadRequestError("Invalid reset request");
+    }
+    assertOtpValid(user, "reset", String(code));
+    user.passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST_FACTOR);
+    user.passwordResetCodeHash = null;
+    user.passwordResetCodeExpiresAt = null;
+    await user.save();
+    return { message: "Password updated successfully" };
+  },
+
+  async resendVerificationCode(email) {
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user) {
+      return { message: "If that email exists, a verification code has been sent." };
+    }
+    if (user.emailVerified) {
+      return { message: "Email is already verified." };
+    }
+    await issueOtp(user, "verify");
+    return { message: "Verification code resent." };
   }
 };
-export {
-  authService
-};
+
+export { authService };

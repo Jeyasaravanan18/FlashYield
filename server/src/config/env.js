@@ -21,6 +21,13 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   // Google OAuth (optional until Google sign-in is enabled)
   GOOGLE_CLIENT_ID: z.string().optional(),
+  // Email / OTP delivery
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SMTP_SECURE: z.coerce.boolean().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().email().optional(),
   // OpenRouter chat assistant (optional, falls back to local replies if not set)
   OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api"),
   OPENROUTER_API_KEY: z.string().optional(),

@@ -21,14 +21,35 @@ function useGoogleLogin() {
   });
 }
 function useRegister() {
-  const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
     mutationFn: async (data) => {
       const res = await api.post("/auth/register", data);
       return res.data;
-    },
-    onSuccess: (data) => {
-      setAuth(data.user, data.accessToken);
+    }
+  });
+}
+function useVerifyEmail() {
+  return useMutation({
+    mutationFn: async (data) => (await api.post("/auth/verify-email", data)).data,
+    onSuccess: (data) => data
+  });
+}
+function useResendVerification() {
+  return useMutation({
+    mutationFn: async (data) => (await api.post("/auth/resend-verification", data)).data
+  });
+}
+function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (data) => (await api.post("/auth/forgot-password", data)).data
+  });
+}
+function useResetPassword() {
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  return useMutation({
+    mutationFn: async (data) => (await api.post("/auth/reset-password", data)).data,
+    onSuccess: () => {
+      clearAuth();
     }
   });
 }
@@ -47,13 +68,14 @@ function useLogout() {
 }
 function useProfile() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery({
     queryKey: ["auth", "me"],
     queryFn: async () => {
       const res = await api.get("/auth/me");
       return res.data;
     },
-    enabled: isAuthenticated
+    enabled: isAuthenticated && !!accessToken
   });
 }
 function useNearbyListings(params) {
@@ -569,7 +591,11 @@ export {
   useMyWaitlist,
   useNearbyListings,
   useProfile,
+  useForgotPassword,
   useRegister,
+  useResetPassword,
+  useResendVerification,
+  useVerifyEmail,
   useSubmitReview,
   useUpdateMerchantStatus,
   useVerifyToken

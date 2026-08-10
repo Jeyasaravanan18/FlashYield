@@ -38,11 +38,9 @@ function AuthModal() {
       register.mutate(
         { email, password, role },
         {
-          onSuccess: (data) => {
+          onSuccess: () => {
             closeAuthModal();
-            if (data.user.role === "merchant") {
-              navigate("/merchant/onboarding");
-            }
+            navigate("/verify-email", { state: { email } });
           },
           onError: (err) => setError(getErrorMessage(err))
         }

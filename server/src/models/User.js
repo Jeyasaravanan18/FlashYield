@@ -38,6 +38,24 @@ const userSchema = new Schema(
       type: Boolean,
       default: false
     },
+    emailVerificationCodeHash: {
+      type: String,
+      default: null,
+      select: false
+    },
+    emailVerificationCodeExpiresAt: {
+      type: Date,
+      default: null
+    },
+    passwordResetCodeHash: {
+      type: String,
+      default: null,
+      select: false
+    },
+    passwordResetCodeExpiresAt: {
+      type: Date,
+      default: null
+    },
     refreshTokenHash: {
       type: String,
       default: null,

@@ -1,109 +1,110 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useGoogleLogin, useLogin } from "../../api/hooks";
-import { getErrorMessage } from "../../lib/api";
-import { Loader2, Leaf } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Leaf, Loader2, Mail, ShieldCheck } from "lucide-react";
+import { AuthPageShell } from "../../components/auth/AuthPageShell";
 import { GoogleSignInButton } from "../../components/auth/GoogleSignInButton";
+import { getErrorMessage } from "../../lib/api";
+import { useGoogleLogin, useLogin, useResendVerification } from "../../api/hooks";
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const login = useLogin();
   const googleLogin = useGoogleLogin();
+  const resendVerification = useResendVerification();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/";
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     login.mutate(
       { email, password },
       {
         onSuccess: (data) => {
           const role = data.user.role;
-          if (role === "customer" && from !== "/") {
-            navigate(from);
-          } else {
-            navigate(role === "merchant" ? "/merchant" : role === "admin" ? "/admin" : "/");
-          }
+          navigate(role === "merchant" ? "/merchant" : role === "admin" ? "/admin" : from);
         },
         onError: (err) => {
-          setError(getErrorMessage(err));
+          const message = getErrorMessage(err);
+          setError(message);
+          if (message.toLowerCase().includes("verify your email")) {
+            setNotice("We sent a fresh verification code to your inbox.");
+          }
         }
       }
     );
   };
   const handleGoogleLogin = (credential) => {
     setError("");
-    googleLogin.mutate(credential, { onSuccess: (data) => navigate(data.user.role === "merchant" ? "/merchant" : data.user.role === "admin" ? "/admin" : from), onError: (err) => setError(getErrorMessage(err)) });
+    setNotice("");
+    googleLogin.mutate(credential, {
+      onSuccess: (data) => navigate(data.user.role === "merchant" ? "/merchant" : data.user.role === "admin" ? "/admin" : from),
+      onError: (err) => setError(getErrorMessage(err))
+    });
   };
-  return /* @__PURE__ */ jsx("div", { className: "min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-gradient-to-br from-surface-100 via-white to-brand-500/5", children: /* @__PURE__ */ jsxs("div", { className: "w-full max-w-sm animate-fade-in", children: [
-    /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-center mb-8", children: [
-      /* @__PURE__ */ jsx(Link, { to: "/", className: "w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center mb-5 shadow-lg shadow-brand-500/20", children: /* @__PURE__ */ jsx(Leaf, { className: "w-6 h-6 text-white" }) }),
-      /* @__PURE__ */ jsx("h1", { className: "text-2xl font-bold text-surface-900", children: "Welcome back" }),
-      /* @__PURE__ */ jsx("p", { className: "mt-1.5 text-sm text-surface-400", children: "Sign in to your account" })
+  const handleResend = () => {
+    if (!email) {
+      setError("Enter your email first.");
+      return;
+    }
+    resendVerification.mutate(
+      { email },
+      {
+        onSuccess: (data) => {
+          setError("");
+          setNotice(data.message || "Verification code sent.");
+        },
+        onError: (err) => setError(getErrorMessage(err))
+      }
+    );
+  };
+  return /* @__PURE__ */ jsx(AuthPageShell, { eyebrow: "Secure sign in", title: "Welcome back to FlashYield", subtitle: "Sign in to manage claims, pickup verification, merchant tools, and customer tickets.", children: /* @__PURE__ */ jsxs("div", { className: "rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:p-8", children: [
+    /* @__PURE__ */ jsxs("div", { className: "mb-6 flex items-center gap-3", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500", children: /* @__PURE__ */ jsx(Leaf, { className: "h-6 w-6" }) }),
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("div", { className: "text-sm font-semibold uppercase tracking-[0.3em] text-brand-500", children: "FlashYield" }),
+        /* @__PURE__ */ jsx("div", { className: "text-sm text-surface-500", children: "Direct-connect surplus marketplace" })
+      ] })
     ] }),
-    /* @__PURE__ */ jsxs("div", { className: "card p-7", children: [
-      /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmit, className: "space-y-5", children: [
-        error && /* @__PURE__ */ jsx("div", { className: "bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600 font-medium", children: error }),
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("label", { htmlFor: "email", className: "label", children: "Email" }),
-          /* @__PURE__ */ jsx(
-            "input",
-            {
-              id: "email",
-              type: "email",
-              className: "input",
-              value: email,
-              onChange: (e) => setEmail(e.target.value),
-              placeholder: "name@example.com",
-              required: true,
-              autoComplete: "email"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("label", { htmlFor: "password", className: "label", children: "Password" }),
-          /* @__PURE__ */ jsx(
-            "input",
-            {
-              id: "password",
-              type: "password",
-              className: "input",
-              value: password,
-              onChange: (e) => setPassword(e.target.value),
-              placeholder: "Enter your password",
-              required: true,
-              autoComplete: "current-password"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsx(
-          "button",
-          {
-            type: "submit",
-            className: "btn-primary w-full py-3.5",
-            disabled: login.isPending,
-            children: login.isPending ? /* @__PURE__ */ jsxs("span", { className: "flex items-center justify-center gap-2", children: [
-              /* @__PURE__ */ jsx(Loader2, { className: "w-4 h-4 animate-spin" }),
-              "Signing in..."
-            ] }) : "Sign In"
-          }
-        )
+    /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmit, className: "space-y-5", children: [
+      error && /* @__PURE__ */ jsx("div", { className: "rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700", children: error }),
+      notice && /* @__PURE__ */ jsx("div", { className: "rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700", children: notice }),
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("label", { htmlFor: "email", className: "mb-2 block text-sm font-semibold uppercase tracking-[0.24em] text-surface-500", children: "Email address" }),
+        /* @__PURE__ */ jsxs("div", { className: "relative", children: [
+          /* @__PURE__ */ jsx(Mail, { className: "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" }),
+          /* @__PURE__ */ jsx("input", { id: "email", type: "email", className: "input !pl-11", value: email, onChange: (e) => setEmail(e.target.value), placeholder: "name@example.com", required: true, autoComplete: "email" })
+        ] })
       ] }),
-      /* @__PURE__ */ jsxs("div", { className: "my-5 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-surface-400", children: [
-        /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" }),
-        "or",
-        /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" })
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("label", { htmlFor: "password", className: "mb-2 block text-sm font-semibold uppercase tracking-[0.24em] text-surface-500", children: "Password" }),
+        /* @__PURE__ */ jsx("input", { id: "password", type: "password", className: "input", value: password, onChange: (e) => setPassword(e.target.value), placeholder: "Enter your password", required: true, autoComplete: "current-password" })
       ] }),
-      /* @__PURE__ */ jsx(GoogleSignInButton, { onCredential: handleGoogleLogin, disabled: login.isPending || googleLogin.isPending }),
-      googleLogin.isPending && /* @__PURE__ */ jsx("p", { className: "mt-3 text-center text-xs text-surface-500", children: "Signing in with Google\u2026" })
+      /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-4 text-sm", children: [
+        /* @__PURE__ */ jsx("button", { type: "button", onClick: handleResend, className: "font-semibold text-brand-500 hover:text-brand-600", children: resendVerification.isPending ? "Sending..." : "Resend verification code" }),
+        /* @__PURE__ */ jsx(Link, { to: "/forgot-password", className: "font-semibold text-surface-500 hover:text-surface-900", children: "Forgot password?" })
+      ] }),
+      /* @__PURE__ */ jsx("button", { type: "submit", className: "btn-primary flex w-full items-center justify-center py-3.5 text-base", disabled: login.isPending, children: login.isPending ? /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-2", children: [
+        /* @__PURE__ */ jsx(Loader2, { className: "h-4 w-4 animate-spin" }),
+        "Signing in..."
+      ] }) : /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-2", children: [
+        /* @__PURE__ */ jsx(ShieldCheck, { className: "h-4 w-4" }),
+        "Sign in"
+      ] }) })
     ] }),
-    /* @__PURE__ */ jsxs("p", { className: "text-center mt-6 text-sm text-surface-400", children: [
-      "Don't have an account?",
-      " ",
-      /* @__PURE__ */ jsx(Link, { to: "/register", className: "font-semibold text-brand-500 hover:text-brand-600 transition-colors", children: "Sign up" })
+    /* @__PURE__ */ jsxs("div", { className: "my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-[0.3em] text-surface-400", children: [
+      /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" }),
+      "or",
+      /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" })
+    ] }),
+    /* @__PURE__ */ jsx(GoogleSignInButton, { onCredential: handleGoogleLogin, disabled: login.isPending || googleLogin.isPending }),
+    /* @__PURE__ */ jsxs("p", { className: "mt-6 text-center text-sm text-surface-500", children: [
+      "Don’t have an account? ",
+      /* @__PURE__ */ jsx(Link, { to: "/register", className: "font-semibold text-brand-500 hover:text-brand-600", children: "Create one" })
     ] })
   ] }) });
 }
