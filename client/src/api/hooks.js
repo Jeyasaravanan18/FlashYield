@@ -536,6 +536,31 @@ function useChatAssistant() {
     mutationFn: async (message) => (await api.post("/merchants/features/chat", { message })).data
   });
 }
+function useUploadImage() {
+  return useMutation({
+    mutationFn: async (file) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await api.post("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      return res.data;
+    }
+  });
+}
+
+function useUpdateListing() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }) => {
+      const res = await api.put(`/listings/${id}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["listings"] });
+    }
+  });
+}
 export {
   useAdminMerchants,
   useAuditLogs,
@@ -598,5 +623,7 @@ export {
   useVerifyEmail,
   useSubmitReview,
   useUpdateMerchantStatus,
-  useVerifyToken
+  useUpdateListing,
+  useVerifyToken,
+  useUploadImage
 };

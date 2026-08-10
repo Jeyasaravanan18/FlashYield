@@ -14,7 +14,7 @@ import {
   Sparkles,
   WandSparkles
 } from "lucide-react";
-import { useCameraSuggest, useCreateListing, useDuplicateLastListing, useMerchantTemplates, usePricingSuggestion } from "../../api/hooks";
+import { useCameraSuggest, useCreateListing, useDuplicateLastListing, useMerchantTemplates, usePricingSuggestion, useUploadImage } from "../../api/hooks";
 import { getErrorMessage } from "../../lib/api";
 
 const fallbackImage = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80";
@@ -72,6 +72,7 @@ function CreateListingPage() {
   const navigate = useNavigate();
   const createMutation = useCreateListing();
   const duplicateMutation = useDuplicateLastListing();
+  const uploadImageMutation = useUploadImage();
   const cameraSuggest = useCameraSuggest();
   const { data: templatesData } = useMerchantTemplates();
   const now = useMemo(() => new Date(), []);
@@ -261,7 +262,29 @@ function CreateListingPage() {
                         jsx(Field, { label: "Description", className: "sm:col-span-2", children: jsx("textarea", { className: "input min-h-28 resize-y", value: description, onChange: (event) => setDescription(event.target.value), placeholder: "Mention what is included, freshness, and any pickup notes.", maxLength: 2000, required: true }) }),
                         jsx(Field, { label: "Category", children: jsx("select", { className: "input", value: category, onChange: (event) => setCategory(event.target.value), children: categories.map(([value, label]) => jsx("option", { value, children: label }, value)) }) }),
                         jsx(Field, { label: "Quantity available", children: jsx("input", { className: "input", type: "number", value: quantity, onChange: (event) => setQuantity(event.target.value), min: "1", step: "1", placeholder: "6", required: true }) }),
-                        jsx(Field, { label: "Photo URL", className: "sm:col-span-2", children: jsxs("div", { className: "relative", children: [jsx(Image, { className: "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" }), jsx("input", { className: "input pl-9", type: "url", value: imageUrl, onChange: (event) => setImageUrl(event.target.value), placeholder: "https://..." })] }) })
+                        jsx(Field, { label: "Photo URL or Upload", className: "sm:col-span-2", children: jsxs("div", { className: "relative flex gap-2 items-center", children: [
+                          jsxs("div", { className: "relative flex-grow", children: [
+                            jsx(Image, { className: "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" }),
+                            jsx("input", { className: "input pl-9", type: "url", value: imageUrl, onChange: (event) => setImageUrl(event.target.value), placeholder: "https://..." })
+                          ]}),
+                          jsx("label", { className: "btn-secondary shrink-0 cursor-pointer", children: [
+                            uploadImageMutation.isPending ? "Uploading..." : "Upload",
+                            jsx("input", {
+                              type: "file",
+                              accept: "image/*",
+                              className: "hidden",
+                              onChange: (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  uploadImageMutation.mutate(file, {
+                                    onSuccess: (data) => setImageUrl(data.url),
+                                    onError: (err) => setError("Image upload failed: " + getErrorMessage(err))
+                                  });
+                                }
+                              }
+                            })
+                          ]})
+                        ] }) })
                       ] }),
                       jsx("div", { className: "mt-4 flex flex-wrap gap-2", children: dietaryOptions.map((tag) => jsx(TagButton, { tag, active: dietaryTags.includes(tag), onToggle: () => setDietaryTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]) }, tag)) }),
                       jsxs("div", { className: "mt-4 grid gap-4 sm:grid-cols-2", children: [

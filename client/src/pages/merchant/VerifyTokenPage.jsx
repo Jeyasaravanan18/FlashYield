@@ -3,26 +3,38 @@ import { useState } from "react";
 import { BadgeCheck, Camera, CircleCheck, KeyRound, ScanLine, ShieldCheck, ShieldX, Sparkles, Ticket } from "lucide-react";
 import { useVerifyToken } from "../../api/hooks";
 import { getErrorMessage } from "../../lib/api";
+import { QRScanner } from "../../components/QRScanner";
 
 function VerifyTokenPage() {
   const [token, setToken] = useState("");
   const [result, setResult] = useState(null);
   const verifyMutation = useVerifyToken();
 
-  const handleVerify = (event) => {
-    event.preventDefault();
+  const handleVerify = (event, tokenToVerify = null) => {
+    if (event && event.preventDefault) event.preventDefault();
     setResult(null);
-    if (!/^[a-f0-9]{64}$/i.test(token)) {
+    const verifyValue = tokenToVerify || token;
+    
+    if (!/^[a-f0-9]{64}$/i.test(verifyValue)) {
       setResult({ type: "error", message: "Enter the full 64-character pickup token." });
       return;
     }
-    verifyMutation.mutate(token, {
+    verifyMutation.mutate(tokenToVerify || token, {
       onSuccess: (data) => {
         setResult({ type: "success", message: data.message || "Pickup verified successfully." });
         setToken("");
       },
       onError: (err) => setResult({ type: "error", message: getErrorMessage(err) })
     });
+  };
+
+  const handleScanSuccess = (decodedText) => {
+    // If the scanner picks up the QR code, trigger verification
+    const scannedToken = decodedText.toLowerCase().replace(/\s/g, "");
+    if (/^[a-f0-9]{64}$/i.test(scannedToken)) {
+      setToken(scannedToken);
+      handleVerify(new Event("submit"), scannedToken);
+    }
   };
 
   return jsxs("div", {
@@ -80,9 +92,24 @@ function VerifyTokenPage() {
               jsx("div", {
                 className: "rounded-3xl border border-surface-200 bg-white p-5 shadow-sm",
                 children: jsxs("form", {
-                  onSubmit: handleVerify,
+                  onSubmit: (e) => handleVerify(e),
                   className: "space-y-5",
                   children: [
+                    jsxs("div", {
+                      className: "mb-6",
+                      children: [
+                        jsx("label", { className: "label mb-2", children: "Scan QR Code" }),
+                        jsx(QRScanner, { onScanSuccess: handleScanSuccess })
+                      ]
+                    }),
+                    jsxs("div", {
+                      className: "relative flex items-center py-2",
+                      children: [
+                        jsx("div", { className: "flex-grow border-t border-surface-200" }),
+                        jsx("span", { className: "flex-shrink-0 mx-4 text-surface-400 text-sm font-medium", children: "OR" }),
+                        jsx("div", { className: "flex-grow border-t border-surface-200" }),
+                      ]
+                    }),
                     jsxs("div", {
                       children: [
                         jsx("label", { className: "label", children: "Pickup token" }),

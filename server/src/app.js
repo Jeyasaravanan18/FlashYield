@@ -18,6 +18,7 @@ import { reviewRouter } from "./routes/reviewRoutes.js";
 import { analyticsRouter } from "./routes/analyticsRoutes.js";
 import { waitlistRouter } from "./routes/waitlistRoutes.js";
 import { merchantFeatureRouter } from "./routes/merchantFeatureRoutes.js";
+import { uploadRouter } from "./routes/uploadRoutes.js";
 const app = express();
 app.use(helmet());
 app.use(
@@ -55,6 +56,7 @@ app.use("/api/v1/reviews", reviewRouter);
 app.use("/api/v1/analytics", analyticsRouter);
 app.use("/api/v1/waitlist", waitlistRouter);
 app.use("/api/v1/merchants/features", merchantFeatureRouter);
+app.use("/api/v1/upload", uploadRouter);
 app.use((_req, res) => {
   res.status(404).json({
     error: {

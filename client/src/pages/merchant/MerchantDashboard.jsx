@@ -10,8 +10,10 @@ import {
   useMerchantHandoffLog,
   useMerchantExports,
   useMerchantProfileTools,
-  useForecast
+  useForecast,
+  useUpdateListing
 } from "../../api/hooks";
+import { useState } from "react";
 import { useCountdown } from "../../hooks/useCountdown";
 import {
   ScanLine,
@@ -26,9 +28,9 @@ import {
   Rocket,
   PackageSearch,
   FileText,
-  Users,
   ChevronRight,
-  Store
+  Store,
+  Edit2
 } from "lucide-react";
 
 function MerchantDashboard() {
@@ -42,6 +44,10 @@ function MerchantDashboard() {
   const { data: exportsData } = useMerchantExports();
   const { data: profileToolsData } = useMerchantProfileTools();
   const { data: forecastData } = useForecast();
+  const updateMutation = useUpdateListing();
+
+  const [editingListing, setEditingListing] = useState(null);
+  const [editPrice, setEditPrice] = useState("");
 
   if (dashLoading || listLoading || analyticsLoading) {
     return jsx(StatePanel, {
@@ -92,6 +98,21 @@ function MerchantDashboard() {
   const handleCancel = (listingId, listingTitle) => {
     if (!confirm(`Cancel "${listingTitle}"? This listing will be removed from the feed.`)) return;
     cancelMutation.mutate(listingId);
+  };
+
+  const handleEditPriceSubmit = (e) => {
+    e.preventDefault();
+    if (!editingListing || !editPrice) return;
+    
+    updateMutation.mutate(
+      { id: editingListing._id, data: { discountedPrice: Number(editPrice) } },
+      {
+        onSuccess: () => {
+          setEditingListing(null);
+          setEditPrice("");
+        }
+      }
+    );
   };
 
   return jsxs("div", {
@@ -190,7 +211,7 @@ function MerchantDashboard() {
                 children: [
                   jsxs("div", { className: "flex items-center justify-between mb-5", children: [jsx("h2", { className: "text-2xl font-display font-bold uppercase text-surface-900", children: "Live inventory" }), jsx(Link, { to: "/merchant/listings/new", className: "text-sm font-semibold text-brand-500 hover:text-brand-600", children: "Post new" })] }),
                   jsx("div", {
-                    children: !activeListings.length ? jsx(EmptyPanel, { title: "No active inventory yet", subtitle: "Create a listing to start clearing surplus." }) : activeListings.map((listing, idx) => jsx(ListingRow, { listing, onCancel: handleCancel, isCancelling: cancelMutation.isPending }, listing._id || idx))
+                    children: !activeListings.length ? jsx(EmptyPanel, { title: "No active inventory yet", subtitle: "Create a listing to start clearing surplus." }) : activeListings.map((listing, idx) => jsx(ListingRow, { listing, onCancel: handleCancel, isCancelling: cancelMutation.isPending, onEdit: () => { setEditingListing(listing); setEditPrice(listing.discountedPrice); } }, listing._id || idx))
                   })
                 ]
               }),
@@ -215,7 +236,40 @@ function MerchantDashboard() {
             ]
           })
         ]
-      })
+      }),
+      editingListing && (
+        jsxs("div", {
+          className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
+          children: [
+            jsxs("div", {
+              className: "w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl",
+              children: [
+                jsx("h3", { className: "text-lg font-bold text-surface-900", children: "Edit Rescue Price" }),
+                jsx("p", { className: "text-sm text-surface-500 mt-1 mb-4", children: `Change price for "${editingListing.title}"` }),
+                jsxs("form", {
+                  onSubmit: handleEditPriceSubmit,
+                  children: [
+                    jsxs("div", {
+                      className: "mb-4",
+                      children: [
+                        jsx("label", { className: "label", children: "New Price (Rs)" }),
+                        jsx("input", { type: "number", className: "input", min: 0, required: true, value: editPrice, onChange: (e) => setEditPrice(e.target.value) })
+                      ]
+                    }),
+                    jsxs("div", {
+                      className: "flex gap-2 justify-end",
+                      children: [
+                        jsx("button", { type: "button", className: "btn-ghost btn-sm", onClick: () => setEditingListing(null), children: "Cancel" }),
+                        jsx("button", { type: "submit", className: "btn-primary btn-sm", disabled: updateMutation.isPending, children: updateMutation.isPending ? "Saving..." : "Save Price" })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      )
     ]
   });
 }
@@ -353,7 +407,7 @@ function EmptyPanel({ title, subtitle }) {
   });
 }
 
-function ListingRow({ listing, onCancel, isCancelling }) {
+function ListingRow({ listing, onCancel, isCancelling, onEdit }) {
   const countdown = useCountdown(listing.claimWindowEnd);
   const isClosed = listing.status === "sold_out" || listing.status === "expired" || listing.status === "cancelled" || countdown.expired;
   const claimed = listing.quantityTotal - listing.quantityAvailable;
@@ -389,6 +443,12 @@ function ListingRow({ listing, onCancel, isCancelling }) {
         children: isActive ? jsxs(Fragment, {
           children: [
             jsx("span", { className: "badge-success text-[10px]", children: "Live" }),
+            jsx("button", {
+              onClick: onEdit,
+              className: "p-1.5 rounded-lg text-surface-400 hover:text-brand-500 hover:bg-brand-50 transition-colors",
+              title: "Edit Price",
+              children: jsx(Edit2, { className: "w-3.5 h-3.5" })
+            }),
             jsx("button", {
               onClick: () => onCancel(listing._id, listing.title),
               disabled: isCancelling,
