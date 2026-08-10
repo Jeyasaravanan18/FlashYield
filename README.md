@@ -124,7 +124,7 @@ flowchart TD
 ## Technology Stack & Key Libraries
 
 ### **Frontend Stack**
-- **Framework**: React 19 + TypeScript + Vite 6
+- **Framework**: React 19 + JavaScript + Vite 6
 - **Styling**: Tailwind CSS + Custom Design Utilities
 - **State Management**: Zustand
 - **Data Fetching & Caching**: TanStack Query (`@tanstack/react-query`)
@@ -133,7 +133,7 @@ flowchart TD
 - **UI Components & Icons**: `lucide-react`, `qrcode.react`
 
 ### **Backend Stack**
-- **Runtime**: Node.js (`>=18.0.0`) + TypeScript (`tsx`)
+- **Runtime**: Node.js (`>=18.0.0`)
 - **Web Framework**: Express 4
 - **Database**: MongoDB (Mongoose 8) with `2dsphere` geospatial indexing
 - **Caching & Pub/Sub**: Redis (ioredis) with automatic `ioredis-mock` fallback
@@ -198,10 +198,10 @@ Seed sample deals (including local regional data for **Sattur, 626203**):
 
 ```bash
 # Seed Sattur deals & merchants
-npm run dev --workspace=server src/scripts/seedSattur.ts
+npm run dev --workspace=server src/scripts/seedSattur.js
 
 # Or seed deals near your IP location
-npm run dev --workspace=server src/scripts/seedLocal.ts
+npm run dev --workspace=server src/scripts/seedLocal.js
 ```
 
 ### 4. Running the Application
@@ -227,8 +227,9 @@ npm run test:server
 # Run unit tests for frontend client
 npm run test:client
 
-# Typecheck whole codebase
-npm run typecheck
+# Verify builds
+npm run build:client
+npm run build:server
 ```
 
 ---
