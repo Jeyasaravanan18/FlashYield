@@ -12,6 +12,12 @@ function AuthModal() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("customer");
+  const [merchantDetails, setMerchantDetails] = useState({
+    businessName: "",
+    phone: "",
+    address: "",
+    description: ""
+  });
   const [error, setError] = useState("");
   const login = useLogin();
   const register = useRegister();
@@ -23,7 +29,7 @@ function AuthModal() {
     setError("");
     if (mode === "login") {
       login.mutate(
-        { email, password },
+        { email, password, role: "customer" },
         {
           onSuccess: (data) => {
             closeAuthModal();
@@ -35,12 +41,13 @@ function AuthModal() {
         }
       );
     } else {
+      const merchantProfile = role === "merchant" ? merchantDetails : undefined;
       register.mutate(
-        { email, password, role },
+        { email, password, role, merchantProfile },
         {
           onSuccess: () => {
             closeAuthModal();
-            navigate("/verify-email", { state: { email } });
+            navigate("/verify-email", { state: { email, role } });
           },
           onError: (err) => setError(getErrorMessage(err))
         }
@@ -53,13 +60,28 @@ function AuthModal() {
       setMode("login");
       setEmail("");
       setPassword("");
+      setRole("customer");
+      setMerchantDetails({
+        businessName: "",
+        phone: "",
+        address: "",
+        description: ""
+      });
       setError("");
     }, 200);
   };
   const isPending = login.isPending || register.isPending || googleLogin.isPending;
   const handleGoogleLogin = (credential) => {
     setError("");
-    googleLogin.mutate(credential, {
+    if (mode === "register" && role === "merchant" && (!merchantDetails.businessName.trim() || !merchantDetails.phone.trim() || !merchantDetails.address.trim())) {
+      setError("Enter store name, phone, and pickup address before continuing with Google.");
+      return;
+    }
+    googleLogin.mutate({
+      credential,
+      role: mode === "register" ? role : "customer",
+      merchantProfile: mode === "register" && role === "merchant" ? merchantDetails : undefined
+    }, {
       onSuccess: (data) => {
         closeAuthModal();
         if (data.user.role === "merchant") navigate("/merchant");
@@ -70,7 +92,7 @@ function AuthModal() {
   };
   return /* @__PURE__ */ jsxs("div", { className: "fixed inset-0 z-[999] flex items-center justify-center p-4 animate-fade-in", children: [
     /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm", onClick: handleDismiss }),
-    /* @__PURE__ */ jsxs("div", { className: "relative bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 animate-scale-in", children: [
+    /* @__PURE__ */ jsxs("div", { className: "relative max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 animate-scale-in", children: [
       /* @__PURE__ */ jsx(
         "button",
         {
@@ -111,9 +133,9 @@ function AuthModal() {
               className: "input",
               value: password,
               onChange: (e) => setPassword(e.target.value),
-              placeholder: mode === "login" ? "Enter your password" : "Create a password (min 6 chars)",
+              placeholder: mode === "login" ? "Enter your password" : "Use 8+ chars with A-z and number",
               required: true,
-              minLength: 6
+              minLength: 8
             }
           )
         ] }),
@@ -146,6 +168,57 @@ function AuthModal() {
             )
           ] })
         ] }),
+        mode === "register" && role === "merchant" && /* @__PURE__ */ jsxs("div", { className: "rounded-2xl border border-brand-100 bg-brand-50/50 p-4 space-y-3", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 text-sm font-semibold text-brand-600", children: [
+            /* @__PURE__ */ jsx(Store, { className: "w-4 h-4" }),
+            "Merchant details"
+          ] }),
+          /* @__PURE__ */ jsxs("div", { children: [
+            /* @__PURE__ */ jsx("label", { htmlFor: "merchant-business-name", className: "label", children: "Store / business name" }),
+            /* @__PURE__ */ jsx("input", {
+              id: "merchant-business-name",
+              type: "text",
+              className: "input",
+              value: merchantDetails.businessName,
+              onChange: (e) => setMerchantDetails((current) => ({ ...current, businessName: e.target.value })),
+              placeholder: "Jeya Sweets",
+              required: true
+            })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { children: [
+            /* @__PURE__ */ jsx("label", { htmlFor: "merchant-phone", className: "label", children: "Store phone" }),
+            /* @__PURE__ */ jsx("input", {
+              id: "merchant-phone",
+              type: "tel",
+              className: "input",
+              value: merchantDetails.phone,
+              onChange: (e) => setMerchantDetails((current) => ({ ...current, phone: e.target.value })),
+              placeholder: "9876543210",
+              required: true
+            })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { children: [
+            /* @__PURE__ */ jsx("label", { htmlFor: "merchant-address", className: "label", children: "Pickup address" }),
+            /* @__PURE__ */ jsx("textarea", {
+              id: "merchant-address",
+              className: "input min-h-20 resize-none",
+              value: merchantDetails.address,
+              onChange: (e) => setMerchantDetails((current) => ({ ...current, address: e.target.value })),
+              placeholder: "Street, area, city, pincode",
+              required: true
+            })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { children: [
+            /* @__PURE__ */ jsx("label", { htmlFor: "merchant-description", className: "label", children: "Store note" }),
+            /* @__PURE__ */ jsx("textarea", {
+              id: "merchant-description",
+              className: "input min-h-20 resize-none",
+              value: merchantDetails.description,
+              onChange: (e) => setMerchantDetails((current) => ({ ...current, description: e.target.value })),
+              placeholder: "Bakery, cafe, restaurant, home kitchen..."
+            })
+          ] })
+        ] }),
         /* @__PURE__ */ jsx(
           "button",
           {
@@ -165,7 +238,13 @@ function AuthModal() {
           "or",
           /* @__PURE__ */ jsx("span", { className: "h-px flex-1 bg-surface-200" })
         ] }),
-        /* @__PURE__ */ jsx(GoogleSignInButton, { onCredential: handleGoogleLogin, disabled: isPending })
+        /* @__PURE__ */ jsx(GoogleSignInButton, {
+          onCredential: handleGoogleLogin,
+          disabled: isPending,
+          selectedRole: mode === "register" ? role : "customer",
+          onRoleChange: mode === "register" ? setRole : undefined,
+          showRoleSelector: false
+        })
       ] }),
       /* @__PURE__ */ jsxs("p", { className: "text-center mt-5 text-sm text-surface-400", children: [
         mode === "login" ? "Don't have an account?" : "Already have an account?",

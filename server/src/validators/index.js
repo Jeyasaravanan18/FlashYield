@@ -8,17 +8,28 @@ const geoPointSchema = z.object({
   lng: z.coerce.number().min(-180).max(180),
   lat: z.coerce.number().min(-90).max(90)
 });
+const merchantSignupProfileSchema = z.object({
+  businessName: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2e3).default(""),
+  address: z.string().trim().min(1, "Address is required"),
+  phone: z.string().trim().min(5, "Phone number is too short").max(20, "Phone number is too long")
+});
 const registerSchema = z.object({
   email: z.string().email("Invalid email address").trim().toLowerCase(),
   password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password cannot exceed 128 characters").regex(
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
     "Password must contain at least one lowercase letter, one uppercase letter, and one digit"
   ),
-  role: z.enum(["customer", "merchant"]).default("customer")
+  role: z.enum(["customer", "merchant"]).default("customer"),
+  merchantProfile: merchantSignupProfileSchema.optional()
+}).refine((data) => data.role !== "merchant" || !!data.merchantProfile, {
+  message: "Merchant details are required for seller accounts",
+  path: ["merchantProfile"]
 });
 const loginSchema = z.object({
   email: z.string().email("Invalid email address").trim().toLowerCase(),
-  password: z.string().min(1, "Password is required")
+  password: z.string().min(1, "Password is required"),
+  role: z.enum(["customer", "merchant"]).default("customer")
 });
 const operatingHourSchema = z.object({
   day: z.enum([
@@ -169,6 +180,7 @@ export {
   createClaimSchema,
   createListingSchema,
   createMerchantProfileSchema,
+  merchantSignupProfileSchema,
   geoPointSchema,
   loginSchema,
   nearbyListingsQuerySchema,

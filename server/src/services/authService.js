@@ -3,10 +3,12 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { User } from "../models/User.js";
+import { MerchantProfile } from "../models/MerchantProfile.js";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 import { BadRequestError, UnauthorizedError, ConflictError } from "../utils/errors.js";
 import { auditService } from "./auditService.js";
+import { geocodingService } from "./geocodingService.js";
 
 const BCRYPT_COST_FACTOR = 12;
 const OTP_TTL_MINUTES = 15;
@@ -136,11 +138,39 @@ function assertOtpValid(user, purpose, code) {
   }
 }
 
+async function createMerchantProfileForUser(user, profileData = {}) {
+  if (user.role !== "merchant" || !profileData.businessName || !profileData.address || !profileData.phone) {
+    return null;
+  }
+  const existing = await MerchantProfile.findOne({ userId: user._id });
+  if (existing) return existing;
+  let geocoded = await geocodingService.geocodeAddress(profileData.address);
+  if (!geocoded) {
+    geocoded = { lat: 12.9716, lng: 77.5946 };
+  }
+  return MerchantProfile.create({
+    userId: user._id,
+    businessName: profileData.businessName,
+    description: profileData.description || "",
+    address: profileData.address,
+    location: {
+      type: "Point",
+      coordinates: [geocoded.lng, geocoded.lat]
+    },
+    phone: profileData.phone,
+    operatingHours: [],
+    verificationStatus: "pending"
+  });
+}
+
 const authService = {
-  async register(email, password, role = "customer", ipAddress) {
+  async register(email, password, role = "customer", ipAddress, merchantProfile = null) {
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
+      if (existingUser.role !== role) {
+        throw new ConflictError(`Already a ${existingUser.role} account`);
+      }
       throw new ConflictError("An account with this email already exists");
     }
     if (role === "admin") {
@@ -154,6 +184,7 @@ const authService = {
       emailVerified: false
     });
 
+    await createMerchantProfileForUser(user, merchantProfile);
     await issueOtp(user, "verify");
 
     await auditService.log({
@@ -219,7 +250,7 @@ const authService = {
     };
   },
 
-  async loginWithGoogle(idToken, ipAddress) {
+  async loginWithGoogle(idToken, ipAddress, requestedRole, merchantProfile = null) {
     if (!env.GOOGLE_CLIENT_ID) throw new BadRequestError("Google sign-in is not configured on this server");
     let token;
     try {
@@ -235,19 +266,36 @@ const authService = {
       throw new UnauthorizedError("Google sign-in token is invalid for this application");
     }
     const email = normalizeEmail(token.email);
-    let user = await User.findOne({ $or: [{ googleSubject: token.sub }, { email }] }).select("+passwordHash");
+    let user = await User.findOne({ googleSubject: token.sub }).select("+passwordHash");
     if (!user) {
-      user = await User.create({
-        email,
-        passwordHash: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_COST_FACTOR),
-        googleSubject: token.sub,
-        role: "customer",
-        emailVerified: true
-      });
-    } else if (!user.googleSubject) {
-      user.googleSubject = token.sub;
-      user.emailVerified = true;
+      user = await User.findOne({ email }).select("+passwordHash");
+      if (!user) {
+        // Create new user (defaults to requestedRole or "customer")
+        const roleToCreate = requestedRole || "customer";
+        user = await User.create({
+          email,
+          passwordHash: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_COST_FACTOR),
+          googleSubject: token.sub,
+          role: roleToCreate,
+          emailVerified: true
+        });
+      } else {
+        // User exists with email
+        if (requestedRole && user.role !== requestedRole) {
+          throw new ConflictError(`Already a ${user.role} account`);
+        }
+        if (!user.googleSubject) {
+          user.googleSubject = token.sub;
+          user.emailVerified = true;
+        }
+      }
+    } else {
+      // User exists with googleSubject
+      if (requestedRole && user.role !== requestedRole) {
+        throw new ConflictError(`Already a ${user.role} account`);
+      }
     }
+    await createMerchantProfileForUser(user, merchantProfile);
     const result = createAuthResult(user);
     user.refreshTokenHash = await hashValue(result.tokens.refreshToken);
     user.lastLoginAt = new Date();
@@ -309,8 +357,8 @@ const authService = {
     };
   },
 
-  async requestEmailVerification(email) {
-    const user = await User.findOne({ email: normalizeEmail(email) });
+  async requestEmailVerification(email, role = "customer") {
+    const user = await User.findOne({ email: normalizeEmail(email), role });
     if (!user) {
       return { message: "If that email exists, a verification code has been sent." };
     }
@@ -321,8 +369,8 @@ const authService = {
     return { message: "Verification code sent.", expiresAt };
   },
 
-  async verifyEmail(email, code) {
-    const user = await User.findOne({ email: normalizeEmail(email) }).select("+emailVerificationCodeHash");
+  async verifyEmail(email, code, role = "customer") {
+    const user = await User.findOne({ email: normalizeEmail(email), role }).select("+emailVerificationCodeHash");
     if (!user) {
       throw new BadRequestError("Invalid verification request");
     }
@@ -334,8 +382,8 @@ const authService = {
     return { message: "Email verified successfully" };
   },
 
-  async requestPasswordReset(email) {
-    const user = await User.findOne({ email: normalizeEmail(email) });
+  async requestPasswordReset(email, role = "customer") {
+    const user = await User.findOne({ email: normalizeEmail(email), role });
     if (!user) {
       return { message: "If that email exists, a reset code has been sent." };
     }
@@ -343,8 +391,8 @@ const authService = {
     return { message: "Password reset code sent.", expiresAt };
   },
 
-  async resetPassword(email, code, newPassword) {
-    const user = await User.findOne({ email: normalizeEmail(email) }).select("+passwordHash +passwordResetCodeHash");
+  async resetPassword(email, code, newPassword, role = "customer") {
+    const user = await User.findOne({ email: normalizeEmail(email), role }).select("+passwordHash +passwordResetCodeHash");
     if (!user) {
       throw new BadRequestError("Invalid reset request");
     }
@@ -356,8 +404,8 @@ const authService = {
     return { message: "Password updated successfully" };
   },
 
-  async resendVerificationCode(email) {
-    const user = await User.findOne({ email: normalizeEmail(email) });
+  async resendVerificationCode(email, role = "customer") {
+    const user = await User.findOne({ email: normalizeEmail(email), role });
     if (!user) {
       return { message: "If that email exists, a verification code has been sent." };
     }

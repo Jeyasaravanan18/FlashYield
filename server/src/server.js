@@ -6,10 +6,17 @@ import { connectRedis, disconnectRedis } from "./config/redis.js";
 import { initializeSocketServer } from "./socket/socketServer.js";
 import { startCronJobs, stopCronJobs } from "./jobs.js";
 import { logger } from "./utils/logger.js";
+import { User } from "./models/User.js";
 const server = http.createServer(app);
 async function bootstrap() {
   try {
     await connectDatabase();
+    try {
+      await User.syncIndexes();
+      logger.info("✅ User indexes synced");
+    } catch (syncErr) {
+      logger.warn({ err: syncErr }, "User index sync skipped or partially applied");
+    }
     await connectRedis();
     initializeSocketServer(server);
     startCronJobs();
