@@ -75,7 +75,7 @@ export function AuthModal() {
 
     if (mode === "login") {
       login.mutate(
-        { email, password },
+        { email, password, role },
         {
           onSuccess: (data) => {
             closeAuthModal();
@@ -186,7 +186,7 @@ export function AuthModal() {
     googleLogin.mutate(
       {
         credential,
-        role: mode === "register" ? role : undefined,
+        role,
         merchantProfile: mode === "register" && role === "merchant" ? merchantDetails : undefined,
         isLogin: mode === "login"
       },
@@ -324,8 +324,8 @@ export function AuthModal() {
             </div>
           )}
 
-          {/* Role selector shown for register, forgot-password, reset-password, verify-email if needed */}
-          {(mode === "register" || mode === "verify-email" || mode === "forgot-password" || mode === "reset-password") && renderAccountTypeSelector()}
+          {/* Role selector shown for all modes */}
+          {renderAccountTypeSelector()}
 
           {/* Email input shown everywhere except some specific states if desired, but good to have everywhere */}
           <div>
@@ -534,7 +534,7 @@ export function AuthModal() {
             <GoogleSignInButton
               onCredential={handleGoogleLogin}
               disabled={isPending}
-              selectedRole="customer"
+              selectedRole={role}
               onRoleChange={setRole}
               showRoleSelector={false}
             />

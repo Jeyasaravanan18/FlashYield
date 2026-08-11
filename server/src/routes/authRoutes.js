@@ -47,8 +47,8 @@ router.post(
   validate({ body: loginSchema }),
   async (req, res, next) => {
     try {
-      const { email, password } = req.body;
-      const result = await authService.login(email, password, req.ip);
+      const { email, password, role } = req.body;
+      const result = await authService.login(email, password, role, req.ip);
       res.cookie("refreshToken", result.tokens.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

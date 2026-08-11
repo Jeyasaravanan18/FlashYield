@@ -250,9 +250,13 @@ const authService = {
     };
   },
 
-  async login(email, password, ipAddress) {
+  async login(email, password, role, ipAddress) {
     const normalizedEmail = normalizeEmail(email);
-    const candidates = await User.find({ email: normalizedEmail }).select("+passwordHash");
+    const query = { email: normalizedEmail };
+    if (role) {
+      query.role = role;
+    }
+    const candidates = await User.find(query).select("+passwordHash");
     if (candidates.length === 0) {
       throw new UnauthorizedError("Invalid email or password");
     }
