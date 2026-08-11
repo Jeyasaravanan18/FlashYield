@@ -44,7 +44,7 @@ function LoginPage() {
   const handleGoogleLogin = (credential) => {
     setError("");
     setNotice("");
-    googleLogin.mutate({ credential, role }, {
+    googleLogin.mutate({ credential, role, isLogin: true }, {
       onSuccess: (data) => navigate(data.user.role === "merchant" ? "/merchant" : data.user.role === "admin" ? "/admin" : from),
       onError: (err) => setError(getErrorMessage(err))
     });

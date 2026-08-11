@@ -121,14 +121,15 @@ router.post(
 const googleAuthSchema = z.object({
   credential: z.string().min(1),
   role: z.enum(["customer", "merchant"]).optional(),
-  merchantProfile: merchantSignupProfileSchema.optional()
-}).refine((data) => data.role !== "merchant" || !!data.merchantProfile, {
+  merchantProfile: merchantSignupProfileSchema.optional(),
+  isLogin: z.boolean().optional()
+}).refine((data) => data.isLogin || data.role !== "merchant" || !!data.merchantProfile, {
   message: "Merchant details are required for seller accounts",
   path: ["merchantProfile"]
 });
 router.post("/google", authLimiter, validate({ body: googleAuthSchema }), async (req, res, next) => {
   try {
-    const result = await authService.loginWithGoogle(req.body.credential, req.ip, req.body.role, req.body.merchantProfile);
+    const result = await authService.loginWithGoogle(req.body.credential, req.ip, req.body.role, req.body.merchantProfile, req.body.isLogin);
     res.cookie("refreshToken", result.tokens.refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1e3, path: "/api/v1/auth" });
     res.json({ user: result.user, accessToken: result.tokens.accessToken });
   } catch (error) {

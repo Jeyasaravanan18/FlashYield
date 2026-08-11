@@ -250,7 +250,7 @@ const authService = {
     };
   },
 
-  async loginWithGoogle(idToken, ipAddress, requestedRole, merchantProfile = null) {
+  async loginWithGoogle(idToken, ipAddress, requestedRole, merchantProfile = null, isLogin = false) {
     if (!env.GOOGLE_CLIENT_ID) throw new BadRequestError("Google sign-in is not configured on this server");
     let token;
     try {
@@ -270,6 +270,12 @@ const authService = {
     if (!user) {
       user = await User.findOne({ email }).select("+passwordHash");
       if (!user) {
+        if (isLogin) {
+          throw new UnauthorizedError("Account not found. Please register to create a new account.");
+        }
+        if (requestedRole === "merchant" && !merchantProfile) {
+          throw new BadRequestError("Merchant details are required to create a new merchant account.");
+        }
         // Create new user (defaults to requestedRole or "customer")
         const roleToCreate = requestedRole || "customer";
         user = await User.create({
@@ -281,7 +287,7 @@ const authService = {
         });
       } else {
         // User exists with email
-        if (requestedRole && user.role !== requestedRole) {
+        if (!isLogin && requestedRole && user.role !== requestedRole) {
           throw new ConflictError(`Already a ${user.role} account`);
         }
         if (!user.googleSubject) {
@@ -291,7 +297,7 @@ const authService = {
       }
     } else {
       // User exists with googleSubject
-      if (requestedRole && user.role !== requestedRole) {
+      if (!isLogin && requestedRole && user.role !== requestedRole) {
         throw new ConflictError(`Already a ${user.role} account`);
       }
     }

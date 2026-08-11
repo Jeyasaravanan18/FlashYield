@@ -43,7 +43,7 @@ function RegisterPage() {
       return;
     }
     googleLogin.mutate(
-      { credential, role, merchantProfile: role === "merchant" ? merchantDetails : undefined },
+      { credential, role, merchantProfile: role === "merchant" ? merchantDetails : undefined, isLogin: false },
       {
         onSuccess: (data) => {
           navigate(data.user.role === "merchant" ? "/merchant" : "/");

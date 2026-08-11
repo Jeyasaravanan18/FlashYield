@@ -16,7 +16,7 @@ function useLogin() {
 function useGoogleLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
-    mutationFn: async ({ credential, role = "customer", merchantProfile }) => (await api.post("/auth/google", { credential, role, merchantProfile })).data,
+    mutationFn: async ({ credential, role = "customer", merchantProfile, isLogin }) => (await api.post("/auth/google", { credential, role, merchantProfile, isLogin })).data,
     onSuccess: (data) => setAuth(data.user, data.accessToken)
   });
 }
