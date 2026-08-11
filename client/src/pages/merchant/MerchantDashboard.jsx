@@ -157,7 +157,19 @@ function MerchantDashboard() {
                   jsx(TopMetric, { label: "Live listings", value: stats.activeListings ?? activeCount, tone: "brand", icon: ShoppingBag }, "live-listings"),
                   jsx(TopMetric, { label: "Claims today", value: stats.todayClaims ?? 0, tone: "blue", icon: ScanLine }, "claims-today"),
                   jsx(TopMetric, { label: "Collected", value: analytics?.totalCollected ?? stats.collectedClaims ?? 0, tone: "green", icon: Users }, "collected"),
-                  jsx(TopMetric, { label: "Forecast", value: forecastData ? `${forecastData.expectedLeftover ?? 0} left` : "—", tone: "dark", icon: PackageSearch, note: forecastData ? `${forecastData.confidence ?? 0}% confidence` : "Awaiting history" })
+                  jsx(TopMetric, {
+                    label: "Forecast",
+                    value: forecastData?.hasHistory === false || forecastData?.expectedLeftover == null
+                      ? "No data"
+                      : `${forecastData.expectedLeftover} left`,
+                    tone: "dark",
+                    icon: PackageSearch,
+                    note: forecastData?.hasHistory === false
+                      ? "Based on your own listings after history builds"
+                      : forecastData
+                        ? `${forecastData.confidence ?? 0}% confidence`
+                        : "Awaiting history"
+                  })
                 ]
               })
             ]

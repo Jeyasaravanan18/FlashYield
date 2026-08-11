@@ -1,22 +1,57 @@
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import { MapPin, X, Navigation, LogIn, Search, Loader2 } from "lucide-react";
 import { useLocationStore } from "../../store/locationStore";
 import { useAuthStore } from "../../store/authStore";
-import { MapPin, X, Navigation, LogIn, Search, Loader2 } from "lucide-react";
-function LocationModal({ force = false }) {
-  const { requestLocation, setLocation, isModalOpen, closeLocationModal, status, label, error } = useLocationStore();
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
+});
+
+function MapPicker({ position, onChange }) {
+  useMapEvents({
+    click(e) {
+      onChange({ lat: e.latlng.lat, lng: e.latlng.lng });
+    }
+  });
+  return position ? <Marker position={[position.lat, position.lng]} /> : null;
+}
+
+export function LocationModal({ force = false }) {
+  const { requestLocation, setLocation, isModalOpen, closeLocationModal, status, label, error, location } = useLocationStore();
   const { openAuthModal } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  if (!isModalOpen && !force) return null;
-  const handleShareLocation = async () => {
-    await requestLocation();
-  };
+  const [pin, setPin] = useState(null);
+
+  const open = isModalOpen || force;
+  const center = useMemo(() => {
+    if (pin) return [pin.lat, pin.lng];
+    if (location?.lat && location?.lng) return [location.lat, location.lng];
+    return [12.9716, 77.5946];
+  }, [location, pin]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (location?.lat && location?.lng) {
+      setPin({ lat: location.lat, lng: location.lng });
+    }
+  }, [open, location?.lat, location?.lng]);
+
+  if (!open) return null;
+
   const handleDismiss = () => {
     if (force) return;
     closeLocationModal();
   };
+
   const handleManualSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -26,122 +61,191 @@ function LocationModal({ force = false }) {
         headers: { "Accept-Language": "en" }
       });
       const data = await res.json();
-      setSearchResults(data);
+      setSearchResults(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
     } finally {
       setIsSearching(false);
     }
   };
-  const handleSelectLocation = (result) => {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    const label = result.display_name.split(",")[0];
-    setLocation(lat, lng, label);
-    if (!force) {
-      closeLocationModal();
+
+  const handlePickResult = (result) => {
+    const lat = Number.parseFloat(result.lat);
+    const lng = Number.parseFloat(result.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    setPin({ lat, lng });
+    setSearchResults([]);
+    setSearchQuery(result.display_name);
+  };
+
+  const handleUsePin = async () => {
+    if (!pin) return;
+    await setLocation(pin.lat, pin.lng, searchQuery || label || "Selected area");
+    if (!force) closeLocationModal();
+  };
+
+  const handleCurrentLocation = async () => {
+    await requestLocation();
+    if (location?.lat && location?.lng) {
+      setPin({ lat: location.lat, lng: location.lng });
     }
   };
-  return /* @__PURE__ */ jsxs("div", { className: "fixed inset-0 z-[999] flex items-center justify-center p-4 animate-fade-in", children: [
-    /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm", onClick: handleDismiss }),
-    /* @__PURE__ */ jsxs("div", { className: "relative bg-white rounded-3xl shadow-2xl max-w-[440px] w-full p-8 sm:p-10 animate-scale-in", children: [
-      !force && /* @__PURE__ */ jsx(
-        "button",
-        {
-          onClick: handleDismiss,
-          className: "absolute top-4 right-4 p-1.5 rounded-xl text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors",
-          children: /* @__PURE__ */ jsx(X, { className: "w-5 h-5" })
-        }
-      ),
-      /* @__PURE__ */ jsx("div", { className: "flex justify-center mb-6", children: /* @__PURE__ */ jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ jsx("div", { className: "w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-400/10 to-brand-500/20 flex items-center justify-center shadow-inner", children: /* @__PURE__ */ jsx(MapPin, { className: "w-8 h-8 text-brand-500", strokeWidth: 1.5 }) }),
-        /* @__PURE__ */ jsx("div", { className: "absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent-500 flex items-center justify-center shadow-md border-2 border-white", children: /* @__PURE__ */ jsx(Navigation, { className: "w-3 h-3 text-white" }) })
-      ] }) }),
-      /* @__PURE__ */ jsxs("h2", { className: "text-2xl font-normal tracking-tight text-surface-900 sm:text-3xl text-center mb-2", children: [
-        force ? "Set your area to continue" : "Share location to find",
-        /* @__PURE__ */ jsx("br", {}),
-        force ? "nearby flash deals" : "nearby flash deals"
-      ] }),
-      /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-500 text-center mb-8 max-w-[280px] mx-auto", children: "See surplus food from kitchens closest to you and never miss a deal in your neighborhood." }),
-      (status === "granted" || status === "fallback") && /* @__PURE__ */ jsxs("div", { className: "mb-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700", children: [
-        "Current area: ",
-        jsx("strong", { children: label })
-      ] }),
-      error && /* @__PURE__ */ jsx("div", { className: "mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700", children: error }),
-      /* @__PURE__ */ jsx(
-        "button",
-        {
-          onClick: handleShareLocation,
-          disabled: status === "requesting",
-          className: "btn-primary w-full py-3.5 text-sm flex items-center justify-center gap-2 mb-4",
-          children: status === "requesting" ? /* @__PURE__ */ jsxs(Fragment, { children: [
-            /* @__PURE__ */ jsx("div", { className: "w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" }),
-            "Locating..."
-          ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-            /* @__PURE__ */ jsx(Navigation, { className: "w-4 h-4" }),
-            "Use Current Location"
-          ] })
-        }
-      ),
-      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-4 my-4", children: [
-        /* @__PURE__ */ jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" }),
-        /* @__PURE__ */ jsx("span", { className: "text-xs font-medium text-surface-400 uppercase", children: "or enter manually" }),
-        /* @__PURE__ */ jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" })
-      ] }),
-      /* @__PURE__ */ jsx("form", { onSubmit: handleManualSearch, className: "mb-4", children: /* @__PURE__ */ jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ jsx(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" }),
-        /* @__PURE__ */ jsx(
-          "input",
-          {
-            type: "text",
-            placeholder: "Search city, area, or zip code...",
-            value: searchQuery,
-            onChange: (e) => setSearchQuery(e.target.value),
-            className: "input pl-9 bg-surface-50"
-          }
-        ),
-        isSearching && /* @__PURE__ */ jsx(Loader2, { className: "absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-500 animate-spin" })
-      ] }) }),
-      searchResults.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-4 border border-surface-200 rounded-xl overflow-hidden max-h-40 overflow-y-auto", children: searchResults.map((res, i) => /* @__PURE__ */ jsx(
-        "button",
-        {
-          type: "button",
-          onClick: () => handleSelectLocation(res),
-          className: "w-full text-left px-4 py-2.5 text-sm hover:bg-surface-50 border-b border-surface-100 last:border-0 truncate",
-          children: res.display_name
-        },
-        i
-      )) }),
-      !force && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-4 my-5", children: [
-        /* @__PURE__ */ jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" }),
-        /* @__PURE__ */ jsx("span", { className: "text-xs font-medium text-surface-400 uppercase", children: "already a user?" }),
-        /* @__PURE__ */ jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" })
-      ] }),
-      !force && /* @__PURE__ */ jsx("div", { className: "text-center", children: /* @__PURE__ */ jsxs(
-        "button",
-        {
-          onClick: () => {
-            handleDismiss();
-            openAuthModal();
-          },
-          className: "inline-flex items-center gap-1.5 text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors",
-          children: [
-            /* @__PURE__ */ jsx(LogIn, { className: "w-4 h-4" }),
-            "Login to see your saved addresses"
-          ]
-        }
-      ) }),
-      !force && /* @__PURE__ */ jsx(
-        "button",
-        {
-          onClick: handleDismiss,
-          className: "w-full mt-4 text-xs text-surface-400 hover:text-surface-600 transition-colors text-center py-1",
-          children: "Skip for now"
-        }
-      )
-    ] })
-  ] });
+
+  return jsxs("div", {
+    className: "fixed inset-0 z-[999] flex items-center justify-center p-4 animate-fade-in",
+    children: [
+      jsx("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm", onClick: handleDismiss }),
+      jsxs("div", {
+        className: "relative max-h-[90vh] w-full max-w-[1024px] overflow-y-auto rounded-3xl bg-white shadow-2xl animate-scale-in",
+        children: [
+          !force && jsx("button", {
+            onClick: handleDismiss,
+            className: "absolute right-4 top-4 rounded-xl p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600",
+            children: jsx(X, { className: "h-5 w-5" })
+          }),
+          jsxs("div", {
+            className: "grid gap-0 lg:grid-cols-[0.95fr_1.05fr]",
+            children: [
+              jsxs("div", {
+                className: "bg-surface-950 p-8 text-white sm:p-10",
+                children: [
+                  jsx("div", {
+                    className: "mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70",
+                    children: "Set your area"
+                  }),
+                  jsxs("h2", {
+                    className: "text-3xl font-black uppercase leading-[0.92] tracking-tight sm:text-5xl",
+                    children: [
+                      force ? "Choose location" : "Share location",
+                      jsx("br", {}),
+                      force ? "to continue" : "to find nearby deals"
+                    ]
+                  }),
+                  jsx("p", {
+                    className: "mt-5 max-w-xl text-sm leading-6 text-white/75 sm:text-base",
+                    children: force
+                      ? "Set your area or pin your exact location before the feed unlocks."
+                      : "Use your current location, search by pincode, or drop a pin on the map for precise nearby results."
+                  }),
+                  jsxs("div", {
+                    className: "mt-8 grid gap-3 sm:grid-cols-3",
+                    children: [
+                      jsx("div", { className: "rounded-3xl border border-white/10 bg-white/5 p-4 text-sm", children: "Current location" }),
+                      jsx("div", { className: "rounded-3xl border border-white/10 bg-white/5 p-4 text-sm", children: "Search by pincode" }),
+                      jsx("div", { className: "rounded-3xl border border-white/10 bg-white/5 p-4 text-sm", children: "Pin on map" })
+                    ]
+                  })
+                ]
+              }),
+              jsxs("div", {
+                className: "p-6 sm:p-8",
+                children: [
+                  (status === "granted" || status === "fallback") && label ? jsx("div", {
+                    className: "mb-4 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700",
+                    children: jsxs(Fragment, { children: ["Current area: ", jsx("strong", { children: label })] })
+                  }) : null,
+                  error && jsx("div", { className: "mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700", children: error }),
+                  jsx("button", {
+                    onClick: handleCurrentLocation,
+                    disabled: status === "requesting",
+                    className: "btn-primary mb-4 flex w-full items-center justify-center gap-2 py-3.5 text-sm",
+                    children: status === "requesting"
+                      ? jsxs(Fragment, { children: [jsx("div", { className: "h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" }), "Locating..."] })
+                      : jsxs(Fragment, { children: [jsx(Navigation, { className: "h-4 w-4" }), "Use Current Location"] })
+                  }),
+                  jsxs("form", {
+                    onSubmit: handleManualSearch,
+                    className: "mb-4",
+                    children: [
+                      jsxs("div", {
+                        className: "relative",
+                        children: [
+                          jsx(Search, { className: "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" }),
+                          jsx("input", {
+                            type: "text",
+                            placeholder: "Search city, area, or pincode...",
+                            value: searchQuery,
+                            onChange: (e) => setSearchQuery(e.target.value),
+                            className: "input bg-surface-50 pl-9 pr-12"
+                          }),
+                          isSearching && jsx(Loader2, { className: "absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-brand-500" })
+                        ]
+                      }),
+                      jsx("button", { type: "submit", className: "mt-3 btn-secondary w-full", children: "Search area" })
+                    ]
+                  }),
+                  searchResults.length > 0 && jsx("div", {
+                    className: "mb-4 max-h-48 overflow-y-auto rounded-2xl border border-surface-200 bg-white",
+                    children: searchResults.map((res, index) => jsx("button", {
+                      type: "button",
+                      onClick: () => handlePickResult(res),
+                      className: "block w-full border-b border-surface-100 px-4 py-3 text-left text-sm hover:bg-surface-50 last:border-0",
+                      children: res.display_name
+                    }, `${res.place_id || index}`))
+                  }),
+                  jsx("div", { className: "mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-surface-400", children: "or drop a pin" }),
+                  jsxs("div", {
+                    className: "h-[320px] overflow-hidden rounded-3xl border border-surface-200",
+                    children: [
+                      jsxs(MapContainer, {
+                        center,
+                        zoom: pin ? 15 : 5,
+                        className: "h-full w-full",
+                        children: [
+                          jsx(TileLayer, { url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }),
+                          jsx(MapPicker, { position: pin, onChange: setPin })
+                        ]
+                      }),
+                      jsx("div", {
+                        className: "pointer-events-none relative -mt-[320px] flex h-[320px] items-end justify-end p-3",
+                        children: jsx("div", {
+                          className: "rounded-xl bg-white/95 px-3 py-2 text-xs font-medium text-surface-600 shadow-sm",
+                          children: "Click the map to place the pin precisely."
+                        })
+                      })
+                    ]
+                  }),
+                  jsx("button", {
+                    onClick: handleUsePin,
+                    disabled: !pin,
+                    className: "btn-primary mt-4 w-full py-3.5 text-sm",
+                    children: "Use this pin"
+                  }),
+                  !force && jsxs(Fragment, {
+                    children: [
+                      jsxs("div", {
+                        className: "my-5 flex items-center gap-4",
+                        children: [
+                          jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" }),
+                          jsx("span", { className: "text-xs font-medium uppercase text-surface-400", children: "already a user?" }),
+                          jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" })
+                        ]
+                      }),
+                      jsx("div", {
+                        className: "text-center",
+                        children: jsx("button", {
+                          onClick: () => {
+                            handleDismiss();
+                            openAuthModal();
+                          },
+                          className: "inline-flex items-center gap-1.5 text-sm font-medium text-brand-500 transition-colors hover:text-brand-600",
+                          children: jsxs(Fragment, { children: [jsx(LogIn, { className: "h-4 w-4" }), "Login to see your saved addresses"] })
+                        })
+                      }),
+                      jsx("button", {
+                        onClick: handleDismiss,
+                        className: "mt-4 w-full py-1 text-center text-xs text-surface-400 transition-colors hover:text-surface-600",
+                        children: "Skip for now"
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      })
+    ]
+  });
 }
-export {
-  LocationModal
-};
+

@@ -42,8 +42,10 @@ export function AppLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [completeProfileOpen, setCompleteProfileOpen] = useState(false);
   const { notifications, unreadCount, markRead, markAllRead } = useNotificationStore();
+  const clearNotifications = useNotificationStore((state) => state.clearAll);
   const notificationsRef = useRef(null);
   const profileRef = useRef(null);
+  const lastRoleRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -65,8 +67,13 @@ export function AppLayout() {
       } else if (user.role === "merchant" && (!user.merchantProfile?.businessName || !user.merchantProfile?.address || !user.merchantProfile?.phone)) {
         setCompleteProfileOpen(true);
       }
+
+      if (lastRoleRef.current !== user.role) {
+        clearNotifications();
+        lastRoleRef.current = user.role;
+      }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, clearNotifications]);
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;

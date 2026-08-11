@@ -450,6 +450,7 @@ router.get("/profile-tools", authenticate, roleGuard("merchant"), async (req, re
     const profile = await getMerchantOrThrow(req.user.userId);
     res.json({
       verifiedBadge: profile.verificationStatus === "approved",
+      address: profile.address,
       storeHours: profile.operatingHours,
       holidayClosures: [],
       pickupInstructions: profile.pickupInstructions || "Show your claim token at the counter.",
@@ -469,6 +470,7 @@ router.patch("/profile-tools", authenticate, roleGuard("merchant"), async (req, 
       { _id: profile._id },
       {
         $set: {
+          ...(updates.address ? { address: updates.address } : {}),
           operatingHours: updates.storeHours ?? profile.operatingHours,
           pickupInstructions: updates.pickupInstructions ?? profile.pickupInstructions,
           languages: updates.languages ?? profile.languages,
@@ -545,27 +547,41 @@ router.get("/forecast", authenticate, roleGuard("merchant"), async (req, res, ne
     const recentListings = await Listing.find({ merchantId: profile._id }).sort({ createdAt: -1 }).limit(30).lean();
     const listingIds = recentListings.map((listing) => listing._id);
     const recentClaims = await Claim.find({ listingId: { $in: listingIds } }).lean();
-    const soldOutRate = recentListings.length ? recentListings.filter((listing) => listing.status === "sold_out").length / recentListings.length : 0.35;
-    const avgQuantity = recentListings.length ? recentListings.reduce((sum, listing) => sum + (listing.quantityTotal || 0), 0) / recentListings.length : 8;
-    const avgDiscount = recentListings.length ? recentListings.reduce((sum, listing) => sum + ((listing.originalPrice || 0) > 0 ? ((listing.originalPrice - listing.discountedPrice) / listing.originalPrice) : 0), 0) / recentListings.length : 0.5;
-    const avgTakeRate = recentListings.length
-      ? recentListings.reduce((sum, listing) => sum + ((listing.quantityTotal || 0) - (listing.quantityAvailable || 0)) / Math.max(1, listing.quantityTotal || 1), 0) / recentListings.length
-      : 0.4;
+    if (recentListings.length === 0) {
+      return res.json({
+        expectedLeftover: null,
+        confidence: 0,
+        suggestedBundles: [],
+        bestHour: null,
+        signalSummary: {
+          soldOutRate: 0,
+          avgTakeRate: 0,
+          avgDiscountPct: 0
+        },
+        hasHistory: false
+      });
+    }
+    const soldOutRate = recentListings.filter((listing) => listing.status === "sold_out").length / recentListings.length;
+    const avgQuantity = recentListings.reduce((sum, listing) => sum + (listing.quantityTotal || 0), 0) / recentListings.length;
+    const avgDiscount = recentListings.reduce((sum, listing) => sum + ((listing.originalPrice || 0) > 0 ? ((listing.originalPrice - listing.discountedPrice) / listing.originalPrice) : 0), 0) / recentListings.length;
+    const avgTakeRate = recentListings.reduce((sum, listing) => sum + ((listing.quantityTotal || 0) - (listing.quantityAvailable || 0)) / Math.max(1, listing.quantityTotal || 1), 0) / recentListings.length;
     const hourCounts = new Array(24).fill(0);
     recentClaims.forEach((claim) => {
       hourCounts[new Date(claim.createdAt || Date.now()).getHours()] += 1;
     });
-    const bestHour = hourCounts.indexOf(Math.max(...hourCounts));
-    const pace = recentListings.length ? recentListings.reduce((sum, listing) => sum + ((listing.quantityTotal || 0) - (listing.quantityAvailable || 0)), 0) / Math.max(1, recentListings.length) : 3;
+    const peakCount = Math.max(...hourCounts);
+    const bestHour = peakCount > 0 ? hourCounts.indexOf(peakCount) : null;
+    const pace = recentListings.reduce((sum, listing) => sum + ((listing.quantityTotal || 0) - (listing.quantityAvailable || 0)), 0) / Math.max(1, recentListings.length);
     const expectedLeftover = Math.max(0, Math.round(avgQuantity * (1 - avgTakeRate) + pace * 0.35 + soldOutRate * 2));
     res.json({
       expectedLeftover,
-      confidence: Math.max(45, Math.min(96, Math.round((1 - soldOutRate) * 100 + avgTakeRate * 20))),
+      confidence: Math.max(20, Math.min(96, Math.round((1 - soldOutRate) * 100 + avgTakeRate * 20))),
       suggestedBundles: [
         { name: "Pastry Box", expectedLeftover: Math.max(0, Math.round(expectedLeftover * 0.6)), recommendedDiscountPct: Math.round(20 + avgDiscount * 30) },
         { name: "Meal Box", expectedLeftover: Math.max(0, Math.round(expectedLeftover * 0.4)), recommendedDiscountPct: Math.round(18 + avgTakeRate * 25) }
       ],
       bestHour,
+      hasHistory: true,
       signalSummary: {
         soldOutRate: Number((soldOutRate * 100).toFixed(0)),
         avgTakeRate: Number((avgTakeRate * 100).toFixed(0)),

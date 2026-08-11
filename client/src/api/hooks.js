@@ -549,9 +549,11 @@ function usePromotionTargeting() {
   });
 }
 function useForecast() {
+  const userId = useAuthStore((s) => s.user?.id);
   return useQuery({
-    queryKey: ["merchant", "forecast"],
+    queryKey: ["merchant", "forecast", userId],
     queryFn: async () => (await api.get("/merchants/features/forecast")).data,
+    enabled: !!userId,
     refetchInterval: 60000
   });
 }
