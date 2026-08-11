@@ -1,8 +1,8 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 import { Link } from "react-router-dom";
 import { BadgeCheck, Clock3, Languages, Store, MapPin, Navigation, Search, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useMerchantProfileTools, useUpdateProfileTools } from "../../api/hooks";
@@ -14,13 +14,45 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
 });
 
-function PinPicker({ position, onChange }) {
+function MapUpdater({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, zoom || 15, { duration: 1 });
+    }
+  }, [center, zoom, map]);
+  return null;
+}
+
+function PinPicker({ position, onMapClick }) {
   useMapEvents({
     click(e) {
-      onChange({ lat: e.latlng.lat, lng: e.latlng.lng });
+      onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
     }
   });
-  return position ? <Marker position={[position.lat, position.lng]} /> : null;
+
+  const markerRef = useRef(null);
+  const eventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const latlng = marker.getLatLng();
+          onMapClick({ lat: latlng.lat, lng: latlng.lng });
+        }
+      }
+    }),
+    [onMapClick]
+  );
+
+  return position ? (
+    <Marker
+      draggable={true}
+      eventHandlers={eventHandlers}
+      position={[position.lat, position.lng]}
+      ref={markerRef}
+    />
+  ) : null;
 }
 
 export function MerchantProfileToolsPage() {
@@ -36,6 +68,7 @@ export function MerchantProfileToolsPage() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isReversing, setIsReversing] = useState(false);
 
   useEffect(() => {
     if (!data) return;
@@ -54,6 +87,41 @@ export function MerchantProfileToolsPage() {
     if (position) return [position.lat, position.lng];
     return [12.9716, 77.5946];
   }, [position]);
+
+  // Reverse geocode a lat/lng into an address string
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      setIsReversing(true);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const result = await res.json();
+      if (result?.display_name) {
+        setAddress(result.display_name);
+        setSearchQuery(result.display_name);
+      } else {
+        // Fallback if no address found at this location
+        const fallback = `Pinned Location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+        setAddress(fallback);
+        setSearchQuery(fallback);
+      }
+    } catch {
+      // Fallback if geocoding API fails (e.g. rate limit)
+      const fallback = `Pinned Location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+      setAddress(fallback);
+      setSearchQuery(fallback);
+    } finally {
+      setIsReversing(false);
+    }
+  };
+
+  // Called when user clicks the map to drop a pin
+  const handleMapClick = (coords) => {
+    setPosition(coords);
+    setSearchResults([]);
+    reverseGeocode(coords.lat, coords.lng);
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -88,11 +156,7 @@ export function MerchantProfileToolsPage() {
         try {
           const { latitude, longitude } = pos.coords;
           setPosition({ lat: latitude, lng: longitude });
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`, {
-            headers: { "Accept-Language": "en" }
-          });
-          const result = await res.json();
-          if (result?.display_name) setAddress(result.display_name);
+          await reverseGeocode(latitude, longitude);
         } finally {
           setIsLocating(false);
         }
@@ -101,6 +165,8 @@ export function MerchantProfileToolsPage() {
     );
   };
 
+  const [isSaved, setIsSaved] = useState(false);
+
   const handleSave = () => {
     updateMutation.mutate({
       storeHours,
@@ -108,6 +174,11 @@ export function MerchantProfileToolsPage() {
       languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
       address,
       location: position ? { lat: position.lat, lng: position.lng } : undefined
+    }, {
+      onSuccess: () => {
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 2500);
+      }
     });
   };
 
@@ -141,28 +212,28 @@ export function MerchantProfileToolsPage() {
                       className: "flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-surface-400",
                       children: [jsx(BadgeCheck, { className: "h-4 w-4 text-brand-500" }), "Verified badge"]
                     })
-                  }),
+                  }, "badge"),
                   jsxs("div", {
                     className: "card p-5",
                     children: [
                       jsxs("div", { className: "flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-surface-400", children: [jsx(Store, { className: "h-4 w-4 text-brand-500" }), "Store hours"] }),
                       jsx("textarea", { className: "input mt-3 min-h-28 resize-none", value: storeHours, onChange: (e) => setStoreHours(e.target.value), placeholder: data?.storeHours || "Mon-Sun 6am-10pm" })
                     ]
-                  }),
+                  }, "hours"),
                   jsxs("div", {
                     className: "card p-5",
                     children: [
                       jsxs("div", { className: "flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-surface-400", children: [jsx(Clock3, { className: "h-4 w-4 text-brand-500" }), "Pickup instructions"] }),
                       jsx("textarea", { className: "input mt-3 min-h-28 resize-none", value: pickupInstructions, onChange: (e) => setPickupInstructions(e.target.value), placeholder: data?.pickupInstructions || "Show token at the counter." })
                     ]
-                  }),
+                  }, "pickup"),
                   jsxs("div", {
                     className: "card p-5",
                     children: [
                       jsxs("div", { className: "flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-surface-400", children: [jsx(Languages, { className: "h-4 w-4 text-brand-500" }), "Languages"] }),
                       jsx("input", { className: "input mt-3", value: languages, onChange: (e) => setLanguages(e.target.value), placeholder: "Tamil, Hindi, Kannada, English" })
                     ]
-                  })
+                  }, "languages")
                 ]
               }),
               jsxs("div", {
@@ -214,13 +285,14 @@ export function MerchantProfileToolsPage() {
                       className: "h-full w-full",
                       children: [
                         jsx(TileLayer, { url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }),
-                        jsx(PinPicker, { position, onChange: setPosition })
+                        jsx(MapUpdater, { center: position ? [position.lat, position.lng] : null, zoom: 15 }),
+                        jsx(PinPicker, { position, onMapClick: handleMapClick })
                       ]
                     })
                   }),
                   jsx("div", {
                     className: "mt-3 rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3 text-xs text-surface-500",
-                    children: "Click the map to refine the pin exactly on your storefront."
+                    children: isReversing ? "📍 Resolving address from pin..." : "Click the map to refine the pin exactly on your storefront."
                   }),
                   jsx("div", {
                     className: "mt-4 grid gap-4 md:grid-cols-2",
@@ -236,9 +308,9 @@ export function MerchantProfileToolsPage() {
                         children: jsx("button", {
                           type: "button",
                           onClick: handleSave,
-                          disabled: updateMutation.isPending || !position || !address.trim(),
-                          className: "btn-primary w-full py-3.5",
-                          children: updateMutation.isPending ? "Saving..." : "Save merchant location"
+                          disabled: updateMutation.isPending || !position || !address.trim() || isSaved,
+                          className: `btn-primary w-full py-3.5 ${isSaved ? "bg-green-600 hover:bg-green-600" : ""}`,
+                          children: isSaved ? "Saved!" : updateMutation.isPending ? "Saving..." : "Save merchant location"
                         })
                       })
                     ]

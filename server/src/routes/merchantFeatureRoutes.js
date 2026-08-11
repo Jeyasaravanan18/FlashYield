@@ -448,10 +448,24 @@ router.patch("/no-shows/:customerId", authenticate, roleGuard("merchant"), async
 router.get("/profile-tools", authenticate, roleGuard("merchant"), async (req, res, next) => {
   try {
     const profile = await getMerchantOrThrow(req.user.userId);
+
+    // Reconstruct storeHours string from structured operatingHours
+    let storeHours = "";
+    if (Array.isArray(profile.operatingHours) && profile.operatingHours.length > 0) {
+      const first = profile.operatingHours[0];
+      if (first.day === "all") {
+        // Free-text format stored as single entry
+        storeHours = first.open || "";
+      } else {
+        // Structured format: join as readable lines
+        storeHours = profile.operatingHours.map(h => `${h.day}: ${h.open} - ${h.close}`).join("\n");
+      }
+    }
+
     res.json({
       verifiedBadge: profile.verificationStatus === "approved",
       address: profile.address,
-      storeHours: profile.operatingHours,
+      storeHours,
       holidayClosures: [],
       pickupInstructions: profile.pickupInstructions || "Show your claim token at the counter.",
       languages: profile.languages?.join(", ") || "English",
@@ -466,19 +480,38 @@ router.patch("/profile-tools", authenticate, roleGuard("merchant"), async (req, 
   try {
     const profile = await getMerchantOrThrow(req.user.userId);
     const updates = req.body || {};
-    await MerchantProfile.updateOne(
-      { _id: profile._id },
-      {
-        $set: {
-          ...(updates.address ? { address: updates.address } : {}),
-          operatingHours: updates.storeHours ?? profile.operatingHours,
-          pickupInstructions: updates.pickupInstructions ?? profile.pickupInstructions,
-          languages: updates.languages ?? profile.languages,
-          verifiedBadge: updates.verifiedBadge ?? profile.verifiedBadge,
-          ...(updates.location ? { location: { type: "Point", coordinates: [updates.location.lng, updates.location.lat] } } : {})
-        }
+
+    const setFields = {};
+
+    if (updates.address) setFields.address = updates.address;
+    if (updates.pickupInstructions !== undefined) setFields.pickupInstructions = updates.pickupInstructions;
+    if (updates.languages !== undefined) setFields.languages = updates.languages;
+    if (updates.verifiedBadge !== undefined) setFields.verifiedBadge = updates.verifiedBadge;
+
+    // storeHours can be either a string ("9am to 11pm") or structured array [{day,open,close}]
+    if (updates.storeHours !== undefined) {
+      if (typeof updates.storeHours === "string") {
+        // Store free-text hours as a single entry so the structured schema doesn't reject it
+        setFields.operatingHours = [{ day: "all", open: updates.storeHours, close: "" }];
+      } else if (Array.isArray(updates.storeHours)) {
+        setFields.operatingHours = updates.storeHours;
       }
-    );
+    }
+
+    if (updates.location && updates.location.lat != null && updates.location.lng != null) {
+      setFields.location = {
+        type: "Point",
+        coordinates: [Number(updates.location.lng), Number(updates.location.lat)]
+      };
+    }
+
+    if (Object.keys(setFields).length > 0) {
+      await MerchantProfile.updateOne(
+        { _id: profile._id },
+        { $set: setFields }
+      );
+    }
+
     res.json({ ok: true });
   } catch (err) {
     next(err);

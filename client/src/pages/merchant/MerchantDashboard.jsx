@@ -209,10 +209,10 @@ function MerchantDashboard() {
           jsx("section", {
             className: "mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4",
             children: [
-              jsx(StatCard, { icon: jsx(DollarSign, { className: "w-4 h-4 text-green-500" }), label: "Revenue recovered", value: analytics ? `₹${analytics.revenueRecovered ?? 0}` : "—", accent: true }),
-              jsx(StatCard, { icon: jsx(Sparkles, { className: "w-4 h-4 text-brand-500" }), label: "Food saved", value: analytics ? `${analytics.foodSavedKg ?? 0} kg` : "—" }),
-              jsx(StatCard, { icon: jsx(TrendingUp, { className: "w-4 h-4 text-brand-500" }), label: "Claim conversion", value: analytics ? `${analytics.claimConversionRate ?? 0}%` : "—" }),
-              jsx(StatCard, { icon: jsx(Users, { className: "w-4 h-4 text-brand-500" }), label: "No-show rate", value: analytics ? `${analytics.noShowRate ?? 0}%` : "—" })
+              jsx(StatCard, { icon: jsx(DollarSign, { className: "w-4 h-4 text-green-500" }), label: "Revenue recovered", value: analytics ? `₹${analytics.revenueRecovered ?? 0}` : "—", accent: true }, "stat-revenue"),
+              jsx(StatCard, { icon: jsx(Sparkles, { className: "w-4 h-4 text-brand-500" }), label: "Food saved", value: analytics ? `${analytics.foodSavedKg ?? 0} kg` : "—" }, "stat-food"),
+              jsx(StatCard, { icon: jsx(TrendingUp, { className: "w-4 h-4 text-brand-500" }), label: "Claim conversion", value: analytics ? `${analytics.claimConversionRate ?? 0}%` : "—" }, "stat-conversion"),
+              jsx(StatCard, { icon: jsx(Users, { className: "w-4 h-4 text-brand-500" }), label: "No-show rate", value: analytics ? `${analytics.noShowRate ?? 0}%` : "—" }, "stat-noshow")
             ]
           }),
 
