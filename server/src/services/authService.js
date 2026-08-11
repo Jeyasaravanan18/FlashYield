@@ -6,7 +6,7 @@ import { User } from "../models/User.js";
 import { MerchantProfile } from "../models/MerchantProfile.js";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
-import { BadRequestError, UnauthorizedError, ConflictError } from "../utils/errors.js";
+import { BadRequestError, UnauthorizedError, ConflictError, ForbiddenError } from "../utils/errors.js";
 import { auditService } from "./auditService.js";
 import { geocodingService } from "./geocodingService.js";
 
@@ -19,6 +19,9 @@ function createAuthResult(user) {
       id: user._id.toString(),
       email: user.email,
       role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
       emailVerified: user.emailVerified
     },
     tokens: {
@@ -206,7 +209,7 @@ async function createMerchantProfileForUser(user, profileData) {
 }
 
 const authService = {
-  async register(email, password, role = "customer", ipAddress, merchantProfile = null) {
+  async register(email, password, role = "customer", firstName, lastName, phone, ipAddress, merchantProfile = null) {
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
@@ -220,6 +223,9 @@ const authService = {
       email: normalizedEmail,
       passwordHash,
       role,
+      firstName,
+      lastName,
+      phone,
       emailVerified: false
     });
 
@@ -242,6 +248,9 @@ const authService = {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
         emailVerified: user.emailVerified,
         verificationRequired: true
       },
@@ -263,6 +272,9 @@ const authService = {
     }
     if (!user) {
       throw new UnauthorizedError("Invalid email or password");
+    }
+    if (user.status === "suspended") {
+      throw new ForbiddenError("Your account has been suspended. Please contact support.");
     }
     if (!user.emailVerified) {
       const { delivery } = await issueOtp(user, "verify");
@@ -289,13 +301,16 @@ const authService = {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
         emailVerified: user.emailVerified
       },
       tokens: { accessToken, refreshToken }
     };
   },
 
-  async loginWithGoogle(idToken, ipAddress, requestedRole, merchantProfile = null, isLogin = false) {
+  async loginWithGoogle(idToken, ipAddress, requestedRole, firstName, lastName, phone, merchantProfile = null, isLogin = false) {
     if (!env.GOOGLE_CLIENT_ID) throw new BadRequestError("Google sign-in is not configured on this server");
     let token;
     try {
@@ -327,6 +342,9 @@ const authService = {
           passwordHash: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_COST_FACTOR),
           googleSubject: token.sub,
           role: roleToUse,
+          firstName: firstName || token.given_name || null,
+          lastName: lastName || token.family_name || null,
+          phone: phone || null,
           emailVerified: true
         });
         await createMerchantProfileForUser(user, merchantProfile);
@@ -340,6 +358,11 @@ const authService = {
     } else {
       // User exists with googleSubject for the selected role
     }
+    
+    if (user.status === "suspended") {
+      throw new ForbiddenError("Your account has been suspended. Please contact support.");
+    }
+    
     await createMerchantProfileForUser(user, merchantProfile);
     const result = createAuthResult(user);
     user.refreshTokenHash = await hashValue(result.tokens.refreshToken);
@@ -367,6 +390,9 @@ const authService = {
     const user = await User.findById(decoded.userId).select("+refreshTokenHash");
     if (!user) {
       throw new UnauthorizedError("User not found");
+    }
+    if (user.status === "suspended") {
+      throw new ForbiddenError("Your account has been suspended.");
     }
     const currentHash = await hashValue(currentRefreshToken);
     if (user.refreshTokenHash !== currentHash) {
@@ -396,10 +422,25 @@ const authService = {
       id: user._id.toString(),
       email: user.email,
       role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt
     };
+  },
+
+  async updateProfile(userId, { firstName, lastName, phone }) {
+    const user = await User.findById(userId);
+    if (!user) throw new NotFoundError("User not found");
+
+    user.firstName = firstName;
+    user.lastName = lastName;
+    user.phone = phone;
+    await user.save();
+
+    return this.getProfile(userId);
   },
 
   async requestEmailVerification(email) {

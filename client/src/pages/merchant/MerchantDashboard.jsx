@@ -221,7 +221,7 @@ function MerchantDashboard() {
                 children: [
                   jsx(MiniPanel, { title: "Queue", subtitle: "Pickup flow", body: `${queueData?.queue?.length ?? 0} claims waiting`, href: "/merchant/queue", icon: ScanLine }, "queue"),
                   jsx(MiniPanel, { title: "Forecast", subtitle: "Sell-through signal", body: forecastData ? `${forecastData.bestHour ?? "--"} is hottest` : "No forecast yet", href: "/merchant/forecast", icon: PackageSearch }, "forecast"),
-                  jsx(MiniPanel, { title: "Exports", subtitle: "Accounting", body: exportsData ? `₹${exportsData.revenueRecovered ?? 0} recovered` : "Export summary ready", href: "/merchant/exports", icon: FileText }),
+                  jsx(MiniPanel, { title: "Exports", subtitle: "Accounting", body: exportsData ? `₹${exportsData.revenueRecovered ?? 0} recovered` : "Export summary ready", href: "/merchant/exports", icon: FileText }, "exports"),
                   jsx(MiniPanel, { title: "Profile tools", subtitle: "Merchant trust", body: profileToolsData?.verifiedBadge ? "Verified profile enabled" : "Manage store profile", href: "/merchant/profile-tools", icon: Users }, "profile-tools")
                 ]
               })
@@ -231,9 +231,9 @@ function MerchantDashboard() {
           jsx("section", {
             className: "mt-4 grid gap-4 md:grid-cols-3",
             children: [
-              visualCard("Notifications", notificationsData?.notifications?.length ?? 0, "Open alerts center", "/merchant/notifications", "notifications"),
-              visualCard("Handoff log", handoffData?.logs?.length ?? 0, "Shift notes and issues", "/merchant/handoff-log", "handoff"),
-              visualCard("Support", 1, "Merchant and customer chatbot", "/merchant/support", "support")
+              jsx(VisualCard, { title: "Notifications", value: notificationsData?.notifications?.length ?? 0, body: "Open alerts center", href: "/merchant/notifications" }, "notifications"),
+              jsx(VisualCard, { title: "Handoff log", value: handoffData?.logs?.length ?? 0, body: "Shift notes and issues", href: "/merchant/handoff-log" }, "handoff"),
+              jsx(VisualCard, { title: "Support", value: 1, body: "Merchant and customer chatbot", href: "/merchant/support" }, "support")
             ]
           })
         ]
@@ -377,7 +377,7 @@ function MiniPanel({ title, subtitle, body, href, icon: Icon }) {
   });
 }
 
-function visualCard(title, value, body, href, key) {
+function VisualCard({ title, value, body, href }) {
   return jsx(Link, {
     to: href,
     className: "group rounded-2xl border border-surface-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
@@ -394,7 +394,7 @@ function visualCard(title, value, body, href, key) {
         jsx(ChevronRight, { className: "w-5 h-5 text-surface-300 group-hover:text-brand-500 transition" })
       ]
     })
-  }, key);
+  });
 }
 
 function EmptyPanel({ title, subtitle }) {

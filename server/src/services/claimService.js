@@ -200,6 +200,50 @@ const claimService = {
     return claim;
   },
   /**
+   * Admin-only: Cancel any active claim and refund inventory.
+   */
+  async adminCancelClaim(claimId, adminId) {
+    const claim = await Claim.findOne({
+      _id: claimId,
+      status: "reserved"
+    });
+    if (!claim) {
+      throw new NotFoundError("Claim not found or not active");
+    }
+    const listing = await Listing.findOneAndUpdate(
+      {
+        _id: claim.listingId,
+        status: { $in: ["active", "sold_out"] },
+        claimWindowEnd: { $gt: new Date() }
+      },
+      { $inc: { quantityAvailable: claim.quantity || 1 }, $set: { status: "active" } },
+      { new: true }
+    );
+    claim.status = "cancelled";
+    await claim.save();
+    await auditService.log({
+      action: "admin_cancelled_claim",
+      actorId: adminId,
+      actorRole: "admin",
+      targetType: "Claim",
+      targetId: claim._id,
+      metadata: { listingId: claim.listingId.toString(), customerId: claim.customerId.toString() }
+    });
+    if (listing) {
+      await Waitlist.findOneAndUpdate(
+        { listingId: listing._id, status: "waiting" },
+        { status: "notified", notifiedAt: new Date() },
+        { sort: { createdAt: 1 } }
+      );
+      emitListingUpdate(listing._id.toString(), {
+        quantityAvailable: listing.quantityAvailable,
+        status: listing.status
+      });
+    }
+    logger.info({ claimId, listingId: claim.listingId, adminId }, "Claim cancelled by admin");
+    return claim;
+  },
+  /**
    * Get a customer's claims with pagination.
    */
   async getCustomerClaims(customerId, params) {

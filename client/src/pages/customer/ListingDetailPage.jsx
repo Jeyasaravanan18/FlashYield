@@ -74,7 +74,7 @@ function ListingDetailPage() {
     ] }),
     /* @__PURE__ */ jsx("div", { className: "card overflow-hidden", children: /* @__PURE__ */ jsxs("div", { className: "grid md:grid-cols-2", children: [
       /* @__PURE__ */ jsxs("div", { className: "relative h-64 md:h-full min-h-[280px] bg-surface-100", children: [
-        /* @__PURE__ */ jsx(
+        listing.imageUrl ? /* @__PURE__ */ jsx(
           "img",
           {
             src: listing.imageUrl,
@@ -84,7 +84,7 @@ function ListingDetailPage() {
               e.target.src = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop";
             }
           }
-        ),
+        ) : /* @__PURE__ */ jsx("div", { className: "w-full h-full flex items-center justify-center text-8xl", children: listing.category === "bakery" ? "🥐" : listing.category === "prepared_meals" ? "🥘" : "🍽️" }),
         /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-gradient-to-t from-black/30 via-transparent" }),
         /* @__PURE__ */ jsxs("span", { className: "absolute top-3 left-3 bg-gradient-to-r from-brand-500 to-brand-400 text-white font-bold px-3 py-1.5 rounded-full text-sm shadow-md", children: [
           "-",

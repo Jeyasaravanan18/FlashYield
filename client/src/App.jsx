@@ -1,6 +1,7 @@
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useAuthStore } from "./store/authStore";
 import { useSocket } from "./hooks/useSocket";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -43,8 +44,14 @@ function ProtectedRoute({
   roles
 }) {
   const { isAuthenticated, user, openAuthModal } = useAuthStore();
+  
+  useEffect(() => {
+    if (!isAuthenticated) {
+      openAuthModal();
+    }
+  }, [isAuthenticated, openAuthModal]);
+
   if (!isAuthenticated) {
-    openAuthModal();
     return /* @__PURE__ */ jsx(Navigate, { to: "/", replace: true });
   }
   if (roles && user && !roles.includes(user.role)) {

@@ -40,7 +40,7 @@ const listingSchema = new Schema(
     },
     imageUrl: {
       type: String,
-      required: [true, "Image is required for listings"]
+      default: ""
     },
     category: {
       type: String,

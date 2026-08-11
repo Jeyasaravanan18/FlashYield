@@ -21,10 +21,16 @@ const registerSchema = z.object({
     "Password must contain at least one lowercase letter, one uppercase letter, and one digit"
   ),
   role: z.enum(["customer", "merchant"]).default("customer"),
+  firstName: z.string().trim().min(1, "First name is required").optional(),
+  lastName: z.string().trim().min(1, "Last name is required").optional(),
+  phone: z.string().trim().min(5, "Phone number is too short").max(20, "Phone number is too long").optional(),
   merchantProfile: merchantSignupProfileSchema.optional()
 }).refine((data) => data.role !== "merchant" || !!data.merchantProfile, {
   message: "Merchant details are required for seller accounts",
   path: ["merchantProfile"]
+}).refine((data) => data.role !== "customer" || (!!data.firstName && !!data.lastName && !!data.phone), {
+  message: "First Name, Last Name, and Phone number are required for customers",
+  path: ["firstName"]
 });
 const loginSchema = z.object({
   email: z.string().email("Invalid email address").trim().toLowerCase(),
@@ -178,15 +184,20 @@ const auditLogQuerySchema = z.object({
 const objectIdParamSchema = z.object({
   id: objectIdSchema
 });
+const updateProfileSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
+  phone: z.string().trim().min(5, "Phone number is too short").max(20, "Phone number is too long")
+});
 export {
   auditLogQuerySchema,
   batchCreateListingSchema,
   createClaimSchema,
   createListingSchema,
   createMerchantProfileSchema,
-  merchantSignupProfileSchema,
   geoPointSchema,
   loginSchema,
+  merchantSignupProfileSchema,
   nearbyListingsQuerySchema,
   objectIdParamSchema,
   objectIdSchema,
@@ -195,5 +206,6 @@ export {
   updateListingSchema,
   updateMerchantProfileSchema,
   updateMerchantStatusSchema,
+  updateProfileSchema,
   verifyTokenSchema
 };

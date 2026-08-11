@@ -56,7 +56,8 @@ function ClaimRow({ claim }) {
             /* @__PURE__ */ jsx("span", { className: "text-xs font-medium text-surface-400 bg-surface-100 px-2 py-0.5 rounded-md", children: `${claim.quantity || 1} item${(claim.quantity || 1) > 1 ? "s" : ""}` }),
             isReserved && /* @__PURE__ */ jsx("span", { className: "badge-success text-[10px]", children: "Active" }),
             claim.status === "collected" && /* @__PURE__ */ jsx("span", { className: "badge-neutral text-[10px]", children: "Collected" }),
-            claim.status === "expired" && /* @__PURE__ */ jsx("span", { className: "badge-danger text-[10px]", children: "Expired" })
+            claim.status === "expired" && /* @__PURE__ */ jsx("span", { className: "badge-danger text-[10px]", children: "Expired" }),
+            claim.status === "cancelled" && /* @__PURE__ */ jsx("span", { className: "badge-danger text-[10px]", children: "Cancelled" })
           ] })
         ] }),
         /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-4 shrink-0 ml-4", children: [

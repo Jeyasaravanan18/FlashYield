@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { MerchantProfile } from "../models/MerchantProfile.js";
 import { Listing } from "../models/Listing.js";
+import { Claim } from "../models/Claim.js";
+import { User } from "../models/User.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { validate } from "../middleware/validate.js";
@@ -10,8 +12,9 @@ import {
   objectIdParamSchema
 } from "../validators.js";
 import { auditService } from "../services/auditService.js";
-import { NotFoundError } from "../utils/errors.js";
+import { NotFoundError, BadRequestError } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
+import { claimService } from "../services/claimService.js";
 const router = Router();
 router.use(authenticate, roleGuard("admin"));
 router.get(
@@ -139,6 +142,172 @@ router.delete(
     }
   }
 );
+
+router.get("/metrics", async (req, res, next) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const totalMerchants = await MerchantProfile.countDocuments({ verificationStatus: "approved" });
+    const pendingMerchants = await MerchantProfile.countDocuments({ verificationStatus: "pending" });
+    const totalUsers = await User.countDocuments({ role: "customer" });
+    const claimsToday = await Claim.countDocuments({ createdAt: { $gte: today } });
+
+    res.json({
+      totalMerchants,
+      pendingMerchants,
+      totalUsers,
+      claimsToday
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/users", async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const role = req.query.role || "customer";
+    const query = { role };
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      data: users,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/users/:id/status", validate({ params: objectIdParamSchema }), async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!["active", "suspended"].includes(status)) {
+      throw new BadRequestError("Invalid status");
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+    if (user.role === "admin") {
+      throw new BadRequestError("Cannot suspend admin accounts");
+    }
+
+    const oldStatus = user.status;
+    user.status = status;
+    await user.save();
+
+    if (status === "suspended") {
+      const { Claim } = await import("../models/Claim.js");
+      const { Listing } = await import("../models/Listing.js");
+      
+      const otherClaims = await Claim.find({ customerId: user._id, status: "reserved" });
+      if (otherClaims.length > 0) {
+        const claimIds = otherClaims.map(c => c._id);
+        await Claim.updateMany({ _id: { $in: claimIds } }, { $set: { status: "cancelled" } });
+        
+        const listingIncrements = new Map();
+        for (const c of otherClaims) {
+          const key = c.listingId.toString();
+          listingIncrements.set(key, (listingIncrements.get(key) || 0) + (c.quantity || 1));
+        }
+        for (const [listingId, increment] of listingIncrements) {
+          await Listing.findOneAndUpdate(
+            { _id: listingId, status: { $in: ["active", "sold_out"] } },
+            { $inc: { quantityAvailable: increment }, $set: { status: "active" } }
+          );
+        }
+      }
+    }
+
+    await auditService.log({
+      action: status === "suspended" ? "user_suspended" : "user_activated",
+      actorId: req.user.userId,
+      actorRole: "admin",
+      targetType: "User",
+      targetId: user._id,
+      metadata: { oldStatus, newStatus: status },
+      ipAddress: req.ip
+    });
+
+    res.json({ message: `User ${status}`, user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/users/:id/unban", validate({ params: objectIdParamSchema }), async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) throw new NotFoundError("User not found");
+    
+    user.claimBannedUntil = null;
+    await user.save();
+    
+    await auditService.log({
+      action: "user_unbanned",
+      actorId: req.user.userId,
+      actorRole: "admin",
+      targetType: "User",
+      targetId: user._id,
+      metadata: { unbanned: true },
+      ipAddress: req.ip
+    });
+    
+    res.json({ message: "User unbanned successfully", user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/claims", async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const status = req.query.status;
+    const query = {};
+    if (status) query.status = status;
+
+    const total = await Claim.countDocuments(query);
+    const claims = await Claim.find(query)
+      .populate("customerId", "email firstName lastName")
+      .populate({
+        path: "listingId",
+        select: "title merchantId",
+        populate: { path: "merchantId", select: "businessName" }
+      })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      data: claims,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/claims/:id", validate({ params: objectIdParamSchema }), async (req, res, next) => {
+  try {
+    const claim = await claimService.adminCancelClaim(req.params.id, req.user.userId);
+    res.json({ message: "Claim cancelled and inventory refunded", claim });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export {
   router as adminRouter
 };

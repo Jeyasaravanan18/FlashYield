@@ -232,7 +232,7 @@ function CreateListingPage() {
                       jsxs("div", { className: "mb-3 flex items-center gap-2", children: [jsx(WandSparkles, { className: "h-4 w-4 text-brand-500" }), jsx("h2", { className: "text-sm font-bold uppercase tracking-wider text-surface-900", children: "Start fast" })] }),
                       jsx("div", {
                         className: "grid gap-2",
-                        children: templates.map((template) => jsx(TemplateButton, { template, onApply: applyTemplate }, template._id || template.title))
+                        children: templates.map((template) => jsx(TemplateButton, { key: template._id || template.title, template, onApply: applyTemplate }))
                       })
                     ]
                   }),
@@ -260,7 +260,7 @@ function CreateListingPage() {
                       jsxs("div", { className: "grid gap-4 sm:grid-cols-2", children: [
                         jsx(Field, { label: "Title", className: "sm:col-span-2", children: jsx("input", { className: "input", value: title, onChange: (event) => setTitle(event.target.value), placeholder: "Today's pastry rescue box", maxLength: 200, required: true }) }),
                         jsx(Field, { label: "Description", className: "sm:col-span-2", children: jsx("textarea", { className: "input min-h-28 resize-y", value: description, onChange: (event) => setDescription(event.target.value), placeholder: "Mention what is included, freshness, and any pickup notes.", maxLength: 2000, required: true }) }),
-                        jsx(Field, { label: "Category", children: jsx("select", { className: "input", value: category, onChange: (event) => setCategory(event.target.value), children: categories.map(([value, label]) => jsx("option", { value, children: label }, value)) }) }),
+                        jsx(Field, { label: "Category", children: jsx("select", { className: "input", value: category, onChange: (event) => setCategory(event.target.value), children: categories.map(([value, label]) => jsx("option", { key: value, value, children: label })) }) }),
                         jsx(Field, { label: "Quantity available", children: jsx("input", { className: "input", type: "number", value: quantity, onChange: (event) => setQuantity(event.target.value), min: "1", step: "1", placeholder: "6", required: true }) }),
                         jsx(Field, { label: "Photo URL or Upload", className: "sm:col-span-2", children: jsxs("div", { className: "relative flex gap-2 items-center", children: [
                           jsxs("div", { className: "relative flex-grow", children: [
@@ -286,7 +286,7 @@ function CreateListingPage() {
                           ]})
                         ] }) })
                       ] }),
-                      jsx("div", { className: "mt-4 flex flex-wrap gap-2", children: dietaryOptions.map((tag) => jsx(TagButton, { tag, active: dietaryTags.includes(tag), onToggle: () => setDietaryTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]) }, tag)) }),
+                      jsx("div", { className: "mt-4 flex flex-wrap gap-2", children: dietaryOptions.map((tag) => jsx(TagButton, { key: tag, tag, active: dietaryTags.includes(tag), onToggle: () => setDietaryTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]) })) }),
                       jsxs("div", { className: "mt-4 grid gap-4 sm:grid-cols-2", children: [
                         jsx(Field, { label: "Allergen information", children: jsx("input", { className: "input", value: allergenInfo, onChange: (event) => setAllergenInfo(event.target.value), placeholder: "Contains gluten, dairy, eggs", maxLength: 500 }) }),
                         jsx(Field, { label: "Food handling notes", children: jsx("input", { className: "input", value: handlingNotes, onChange: (event) => setHandlingNotes(event.target.value), placeholder: "Keep refrigerated; consume today", maxLength: 500 }) })
@@ -316,7 +316,7 @@ function CreateListingPage() {
                     title: "Pickup window",
                     subtitle: "Claims open at the start time and expire at closing.",
                     children: [
-                      jsx("div", { className: "mb-4 flex flex-wrap gap-2", children: [1, 2, 3].map((hours) => jsx("button", { type: "button", onClick: () => setWindow(hours), className: "btn-ghost btn-sm border border-surface-200 bg-white", children: `${hours} hour${hours > 1 ? "s" : ""}` }, hours)) }),
+                      jsx("div", { className: "mb-4 flex flex-wrap gap-2", children: [1, 2, 3].map((hours) => jsx("button", { key: hours, type: "button", onClick: () => setWindow(hours), className: "btn-ghost btn-sm border border-surface-200 bg-white", children: `${hours} hour${hours > 1 ? "s" : ""}` })) }),
                       jsxs("div", { className: "grid gap-4 sm:grid-cols-2", children: [
                         jsx(Field, { label: "Claims open", children: jsx("input", { className: "input", type: "datetime-local", value: claimWindowStart, onChange: (event) => setClaimWindowStart(event.target.value), required: true }) }),
                         jsx(Field, { label: "Pickup closes", children: jsx("input", { className: "input", type: "datetime-local", value: claimWindowEnd, onChange: (event) => setClaimWindowEnd(event.target.value), required: true }) })
@@ -447,7 +447,7 @@ function PreviewCard({ title, description, categoryLabel, imagePreview, original
             jsx(PreviewMetric, { label: "Claims open", value: start }),
             jsx(PreviewMetric, { label: "Pickup closes", value: end })
           ] }),
-          dietaryTags.length ? jsx("div", { className: "mt-4 flex flex-wrap gap-2", children: dietaryTags.map((tag) => jsx("span", { className: "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold capitalize text-emerald-700", children: tag }, tag)) }) : null,
+          dietaryTags.length ? jsx("div", { className: "mt-4 flex flex-wrap gap-2", children: dietaryTags.map((tag) => jsx("span", { key: tag, className: "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold capitalize text-emerald-700", children: tag })) }) : null,
           jsxs("div", { className: "mt-5 rounded-xl bg-surface-900 p-4 text-white", children: [
             jsxs("div", { className: "flex items-center gap-2 text-sm font-semibold", children: [jsx(CheckCircle2, { className: "h-4 w-4 text-emerald-400" }), "Customer claim flow"] }),
             jsxs("div", { className: "mt-3 grid gap-2 text-xs text-white/60", children: [

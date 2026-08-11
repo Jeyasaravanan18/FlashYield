@@ -3,7 +3,7 @@ import { authService } from "../services/authService.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { authLimiter } from "../middleware/rateLimiter.js";
 import { validate } from "../middleware/validate.js";
-import { registerSchema, loginSchema, merchantSignupProfileSchema } from "../validators.js";
+import { registerSchema, loginSchema, merchantSignupProfileSchema, updateProfileSchema } from "../validators.js";
 import { z } from "zod";
 const router = Router();
 const emailOnlySchema = z.object({
@@ -27,8 +27,8 @@ router.post(
   validate({ body: registerSchema }),
   async (req, res, next) => {
     try {
-      const { email, password, role, merchantProfile } = req.body;
-      const result = await authService.register(email, password, role, req.ip, merchantProfile);
+      const { email, password, role, firstName, lastName, phone, merchantProfile } = req.body;
+      const result = await authService.register(email, password, role, firstName, lastName, phone, req.ip, merchantProfile);
       res.status(201).json({
         user: result.user,
         accessToken: result.tokens?.accessToken || null,
@@ -122,15 +122,23 @@ router.post(
 const googleAuthSchema = z.object({
   credential: z.string().min(1),
   role: z.enum(["customer", "merchant"]).optional(),
+  firstName: z.string().trim().optional(),
+  lastName: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
   merchantProfile: merchantSignupProfileSchema.optional(),
   isLogin: z.boolean().optional()
 }).refine((data) => data.isLogin || data.role !== "merchant" || !!data.merchantProfile, {
   message: "Merchant details are required for seller accounts",
   path: ["merchantProfile"]
+}).refine((data) => data.isLogin || data.role !== "customer" || (!!data.phone), {
+  // We'll extract first and last name from Google token, so we mainly need phone here
+  message: "Phone number is required for customers",
+  path: ["phone"]
 });
 router.post("/google", authLimiter, validate({ body: googleAuthSchema }), async (req, res, next) => {
   try {
-    const result = await authService.loginWithGoogle(req.body.credential, req.ip, req.body.role, req.body.merchantProfile, req.body.isLogin);
+    const { credential, role, firstName, lastName, phone, merchantProfile, isLogin } = req.body;
+    const result = await authService.loginWithGoogle(credential, req.ip, role, firstName, lastName, phone, merchantProfile, isLogin);
     res.cookie("refreshToken", result.tokens.refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1e3, path: "/api/v1/auth" });
     res.json({ user: result.user, accessToken: result.tokens.accessToken });
   } catch (error) {
@@ -187,6 +195,20 @@ router.get(
   async (req, res, next) => {
     try {
       const profile = await authService.getProfile(req.user.userId);
+      res.json(profile);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+router.put(
+  "/me",
+  authenticate,
+  validate({ body: updateProfileSchema }),
+  async (req, res, next) => {
+    try {
+      const { firstName, lastName, phone } = req.body;
+      const profile = await authService.updateProfile(req.user.userId, { firstName, lastName, phone });
       res.json(profile);
     } catch (err) {
       next(err);

@@ -65,7 +65,7 @@ function startCronJobs() {
       );
 
       // Penalize users for no-shows
-      const penaltyDurationHours = 24;
+      const penaltyDurationHours = 72;
       const bannedUntil = new Date(now.getTime() + penaltyDurationHours * 60 * 60 * 1000);
       const customerIds = [...new Set(claimsToExpire.map(c => c.customerId.toString()))];
       
@@ -83,12 +83,30 @@ function startCronJobs() {
         const key = claim.listingId.toString();
         listingIncrements.set(key, (listingIncrements.get(key) || 0) + (claim.quantity || 1));
       }
+
+      // Also cancel any other active reservations for these users
+      const otherClaims = await Claim.find({ 
+        customerId: { $in: customerIds }, 
+        status: "reserved" 
+      });
+      if (otherClaims.length > 0) {
+        const otherClaimIds = otherClaims.map((c) => c._id);
+        await Claim.updateMany(
+          { _id: { $in: otherClaimIds } },
+          { $set: { status: "cancelled" } }
+        );
+        for (const claim of otherClaims) {
+          const key = claim.listingId.toString();
+          listingIncrements.set(key, (listingIncrements.get(key) || 0) + (claim.quantity || 1));
+        }
+        logger.info({ count: otherClaims.length }, "Cancelled other active claims for banned users");
+      }
+
       for (const [listingId, increment] of listingIncrements) {
         await Listing.findOneAndUpdate(
           {
             _id: listingId,
-            status: { $in: ["active", "sold_out"] },
-            claimWindowEnd: { $gt: now }
+            status: { $in: ["active", "sold_out"] }
           },
           {
             $inc: { quantityAvailable: increment },

@@ -78,6 +78,22 @@ function useProfile() {
     enabled: isAuthenticated && !!accessToken
   });
 }
+function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.put("/auth/me", data);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["auth", "me"], data);
+      setAuth(data, accessToken);
+    }
+  });
+}
+
 function useNearbyListings(params) {
   return useQuery({
     queryKey: ["listings", "nearby", params],
@@ -248,6 +264,90 @@ function useAdminMerchants(params) {
     queryFn: async () => {
       const res = await api.get("/admin/merchants", { params });
       return res.data;
+    }
+  });
+}
+function useAdminListings(params) {
+  return useQuery({
+    queryKey: ["admin", "listings", params],
+    queryFn: async () => {
+      const res = await api.get("/admin/listings", { params });
+      return res.data;
+    }
+  });
+}
+function useModerateListing() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await api.delete(`/admin/listings/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
+    }
+  });
+}
+function useAdminMetrics() {
+  return useQuery({
+    queryKey: ["admin", "metrics"],
+    queryFn: async () => {
+      const res = await api.get("/admin/metrics");
+      return res.data;
+    }
+  });
+}
+function useAdminUsers(params) {
+  return useQuery({
+    queryKey: ["admin", "users", params],
+    queryFn: async () => {
+      const res = await api.get("/admin/users", { params });
+      return res.data;
+    }
+  });
+}
+function useUpdateUserStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.put(`/admin/users/${data.id}/status`, { status: data.status });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    }
+  });
+}
+function useUnbanUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await api.put(`/admin/users/${id}/unban`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    }
+  });
+}
+function useAdminClaims(params) {
+  return useQuery({
+    queryKey: ["admin", "claims", params],
+    queryFn: async () => {
+      const res = await api.get("/admin/claims", { params });
+      return res.data;
+    }
+  });
+}
+function useAdminCancelClaim() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await api.delete(`/admin/claims/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "claims"] });
     }
   });
 }
@@ -563,6 +663,13 @@ function useUpdateListing() {
 }
 export {
   useAdminMerchants,
+  useAdminListings,
+  useModerateListing,
+  useAdminMetrics,
+  useAdminUsers,
+  useUpdateUserStatus,
+  useAdminClaims,
+  useAdminCancelClaim,
   useAuditLogs,
   useCancelClaim,
   useCancelListing,
@@ -622,8 +729,10 @@ export {
   useResendVerification,
   useVerifyEmail,
   useSubmitReview,
+  useUnbanUser,
   useUpdateMerchantStatus,
   useUpdateListing,
   useVerifyToken,
-  useUploadImage
+  useUploadImage,
+  useUpdateProfile
 };

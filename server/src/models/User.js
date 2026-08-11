@@ -20,6 +20,21 @@ const userSchema = new Schema(
       type: String,
       default: null
     },
+    firstName: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: null
+    },
     role: {
       type: String,
       enum: {
@@ -28,6 +43,11 @@ const userSchema = new Schema(
       },
       required: true,
       default: "customer"
+    },
+    status: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active"
     },
     emailVerified: {
       type: Boolean,

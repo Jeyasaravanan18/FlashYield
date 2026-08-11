@@ -23,6 +23,9 @@ export function AuthModal() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [role, setRole] = useState("customer");
   const [merchantDetails, setMerchantDetails] = useState({
@@ -53,6 +56,9 @@ export function AuthModal() {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
+      setFirstName("");
+      setLastName("");
+      setPhone("");
       setCode("");
       setRole("customer");
       setMerchantDetails({
@@ -99,7 +105,7 @@ export function AuthModal() {
       }
       const merchantProfile = role === "merchant" ? merchantDetails : undefined;
       register.mutate(
-        { email, password, role, merchantProfile },
+        { email, password, role, firstName, lastName, phone, merchantProfile },
         {
           onSuccess: (data) => {
             setMessage(data.message || "Account created. Please verify your email.");
@@ -398,6 +404,56 @@ export function AuthModal() {
                 required
                 minLength={8}
               />
+            </div>
+          )}
+
+          {/* Customer specific fields during registration */}
+          {mode === "register" && role === "customer" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="customer-first-name" className="label">
+                    First Name
+                  </label>
+                  <input
+                    id="customer-first-name"
+                    type="text"
+                    className="input"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="John"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="customer-last-name" className="label">
+                    Last Name
+                  </label>
+                  <input
+                    id="customer-last-name"
+                    type="text"
+                    className="input"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Doe"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="customer-phone" className="label">
+                  Phone Number
+                </label>
+                <input
+                  id="customer-phone"
+                  type="tel"
+                  className="input"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="9876543210"
+                  required
+                />
+              </div>
             </div>
           )}
 

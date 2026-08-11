@@ -33,8 +33,10 @@ import {
   ReceiptText,
   HeartHandshake,
   Globe,
-  MapPinned
+  MapPinned,
+  Edit2
 } from "lucide-react";
+import { CompleteProfileModal } from "../../components/modals/CompleteProfileModal";
 
 function formatDisplayValue(value) {
   if (value == null || value === "") return "—";
@@ -49,6 +51,7 @@ function ProfilePage() {
   const logout = useLogout();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [locationSharing, setLocationSharing] = useState(true);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   const isMerchant = user?.role === "merchant";
   const isCustomer = user?.role === "customer";
@@ -93,6 +96,7 @@ function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-surface-100 pb-24 pt-6">
+      <CompleteProfileModal isOpen={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6 rounded-[28px] border border-surface-200 bg-white shadow-sm overflow-hidden">
           <div className="bg-gradient-to-br from-surface-950 via-surface-900 to-surface-800 px-6 py-8 sm:px-8">
@@ -107,13 +111,13 @@ function ProfilePage() {
                     {roleLabel} profile
                   </div>
                   <h1 className="text-3xl font-black uppercase leading-tight tracking-tight text-white sm:text-5xl">
-                    {isMerchant ? "Merchant control panel" : "Customer profile"}
+                    {isMerchant ? "Merchant control panel" : (user.firstName || "Customer")}
                   </h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">
-                    {isMerchant
-                      ? "Manage store identity, pickup workflow, merchant tools, verification settings, and operational preferences from one profile."
-                      : "Manage your account details, claim history, savings insights, preferences, and support settings in one place."}
-                  </p>
+                  {isMerchant && (
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">
+                      Manage store identity, pickup workflow, merchant tools, verification settings, and operational preferences from one profile.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -139,7 +143,7 @@ function ProfilePage() {
           <div className="grid gap-4 px-6 py-6 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title={isMerchant ? "Store status" : "Total claims"}
-              value={isMerchant ? (merchantProfile?.verifiedBadge ? "Verified" : "Pending") : summary.totalClaims}
+              value={isMerchant ? (merchantProfile?.verificationStatus === "approved" ? "Verified" : "Pending") : summary.totalClaims}
               subtitle={isMerchant ? "Verification and listing trust" : "All-time bundles claimed"}
               icon={isMerchant ? BadgeCheck : Ticket}
             />
@@ -233,7 +237,7 @@ function ProfilePage() {
                       <InfoTile
                         icon={BadgeCheck}
                         label="Verified badge"
-                        value={merchantTools?.verifiedBadge || merchantProfile?.verifiedBadge ? "Enabled" : "Pending review"}
+                        value={merchantTools?.verifiedBadge || merchantProfile?.verificationStatus === "approved" ? "Enabled" : "Pending review"}
                       />
                       <InfoTile
                         icon={Clock}
@@ -270,6 +274,15 @@ function ProfilePage() {
             <SectionCard
               title={isMerchant ? "Account and operations" : "Account"}
               subtitle={isMerchant ? "Store identity, support, and operational profile" : "Core account details"}
+              action={!isMerchant && (
+                <button
+                  onClick={() => setEditProfileOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                  Edit Profile
+                </button>
+              )}
             >
               {profileLoading && !profileError ? (
                 <LoadingBlock />
@@ -284,11 +297,14 @@ function ProfilePage() {
                   />
                   {isMerchant ? (
                     <>
-                      <SettingsRow icon={<MapPinned className="h-4 w-4" />} label="Store location" value={formatDisplayValue(merchantProfile?.location || merchantProfile?.address || "Not set")} />
+                      <SettingsRow icon={<MapPinned className="h-4 w-4" />} label="Store location" value={formatDisplayValue(merchantProfile?.address || "Not set")} />
                       <SettingsRow icon={<Phone className="h-4 w-4" />} label="Phone" value={formatDisplayValue(merchantProfile?.phone || "Not set")} />
                     </>
                   ) : (
                     <>
+                      <SettingsRow icon={<User className="h-4 w-4" />} label="First name" value={user.firstName || "Not set"} />
+                      <SettingsRow icon={<User className="h-4 w-4" />} label="Last name" value={user.lastName || "Not set"} />
+                      <SettingsRow icon={<Phone className="h-4 w-4" />} label="Phone" value={user.phone || "Not set"} />
                       <SettingsRow icon={<Ticket className="h-4 w-4" />} label="Total claims" value={String(summary.totalClaims)} />
                       <SettingsRow icon={<TrendingDown className="h-4 w-4" />} label="Collected claims" value={String(summary.collectedClaims)} />
                     </>
@@ -339,7 +355,7 @@ function ProfilePage() {
               <div className="space-y-3">
                 {isMerchant ? (
                   <>
-                    <QuickChip label="Verified badge" value={merchantTools?.verifiedBadge ? "Enabled" : "Disabled"} />
+                    <QuickChip label="Verified badge" value={merchantTools?.verifiedBadge || merchantProfile?.verificationStatus === "approved" ? "Enabled" : "Disabled"} />
                     <QuickChip label="Hours" value={merchantTools?.storeHours ? "Configured" : "Not configured"} />
                     <QuickChip label="Pickup notes" value={merchantTools?.pickupInstructions ? "Ready" : "Missing"} />
                   </>
@@ -367,12 +383,15 @@ function ProfilePage() {
   );
 }
 
-function SectionCard({ title, subtitle, children }) {
+function SectionCard({ title, subtitle, action, children }) {
   return (
     <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
-      <div className="mb-5">
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-400">{subtitle}</div>
-        <h2 className="mt-1 text-2xl font-black uppercase tracking-tight text-surface-900">{title}</h2>
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-400">{subtitle}</div>
+          <h2 className="mt-1 text-2xl font-black uppercase tracking-tight text-surface-900">{title}</h2>
+        </div>
+        {action && <div>{action}</div>}
       </div>
       {children}
     </section>

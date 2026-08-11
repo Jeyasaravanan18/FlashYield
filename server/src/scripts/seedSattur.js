@@ -27,7 +27,6 @@ const satturMerchants = [
       {
         title: "Sattur Special Garlic Karasev (500g)",
         description: "Crispy, spicy Sattur Karasev made with garlic, gram flour, and fresh spices.",
-        imageUrl: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?auto=format&fit=crop&q=80&w=800",
         category: "snacks",
         dietaryTags: ["vegetarian", "gluten-free"],
         originalPrice: 180,
@@ -38,7 +37,6 @@ const satturMerchants = [
       {
         title: "Sattur Sweet & Sev Evening Surprise Pack",
         description: "Assorted Halwa, Laddu, and Sattur Sev combo pack.",
-        imageUrl: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&q=80&w=800",
         category: "snacks",
         dietaryTags: ["vegetarian"],
         originalPrice: 250,
@@ -59,7 +57,6 @@ const satturMerchants = [
       {
         title: "Fresh Veg Puffs & Bun Butter Pack",
         description: "End-of-day surplus of freshly baked vegetable puffs and sweet cream buns.",
-        imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=800",
         category: "bakery",
         dietaryTags: ["vegetarian"],
         originalPrice: 140,
@@ -70,7 +67,6 @@ const satturMerchants = [
       {
         title: "Butter Sponge Cake & Milk Bread Bundle",
         description: "Soft milk bread loaf with slice of vanilla butter sponge cake.",
-        imageUrl: "https://images.unsplash.com/photo-1517433670267-08bbd4be890f?auto=format&fit=crop&q=80&w=800",
         category: "bakery",
         dietaryTags: ["vegetarian"],
         originalPrice: 160,
@@ -91,7 +87,6 @@ const satturMerchants = [
       {
         title: "Virudhunagar Parotta & Kurma Box",
         description: "Flaky layered parottas served with rich vegetable kurma and salna.",
-        imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=800",
         category: "prepared_meals",
         dietaryTags: ["vegetarian"],
         originalPrice: 150,
@@ -102,7 +97,6 @@ const satturMerchants = [
       {
         title: "Evening South Indian Tiffin Combo",
         description: "Hot Idlis, Medu Vada, and Mini Masala Dosa with sambar and chutneys.",
-        imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800",
         category: "prepared_meals",
         dietaryTags: ["vegetarian"],
         originalPrice: 130,
@@ -123,7 +117,6 @@ const satturMerchants = [
       {
         title: "Fresh Farm Vegetable Surplus Basket (3kg)",
         description: "Selection of fresh tomatoes, onions, brinjal, drumsticks, and green chillies.",
-        imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=80&w=800",
         category: "produce",
         dietaryTags: ["vegan", "gluten-free"],
         originalPrice: 200,
@@ -134,7 +127,6 @@ const satturMerchants = [
       {
         title: "Local Tropical Fruit Combo Box",
         description: "Fresh local bananas, guavas, and seasonal fruits harvested daily.",
-        imageUrl: "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800",
         category: "produce",
         dietaryTags: ["vegan", "gluten-free"],
         originalPrice: 180,
@@ -155,7 +147,6 @@ const satturMerchants = [
       {
         title: "Chilled Badam Milk & Elaneer Combo (4 Pack)",
         description: "Refreshingly cool almond milk and fresh tender coconut juice bottles.",
-        imageUrl: "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&q=80&w=800",
         category: "beverages",
         dietaryTags: ["vegetarian"],
         originalPrice: 160,
@@ -166,7 +157,6 @@ const satturMerchants = [
       {
         title: "Pure Farm Paneer & Curd Pack (500g)",
         description: "Fresh cottage cheese and thick unpasteurized farm curd.",
-        imageUrl: "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=800",
         category: "dairy",
         dietaryTags: ["vegetarian"],
         originalPrice: 190,
