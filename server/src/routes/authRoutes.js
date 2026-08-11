@@ -207,8 +207,8 @@ router.put(
   validate({ body: updateProfileSchema }),
   async (req, res, next) => {
     try {
-      const { firstName, lastName, phone } = req.body;
-      const profile = await authService.updateProfile(req.user.userId, { firstName, lastName, phone });
+      const { firstName, lastName, phone, merchantProfile } = req.body;
+      const profile = await authService.updateProfile(req.user.userId, { firstName, lastName, phone, merchantProfile });
       res.json(profile);
     } catch (err) {
       next(err);

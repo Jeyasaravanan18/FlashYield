@@ -25,7 +25,13 @@ function BrowsePage() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [sortBy, setSortBy] = useState("distance");
   const [maxDistance, setMaxDistance] = useState("");
-  const listingsQuery = useNearbyListings({ lng, lat, category: activeCategory || void 0, dietaryTags: activeTags });
+  const listingsQuery = useNearbyListings({ 
+    lng, 
+    lat, 
+    category: activeCategory || void 0, 
+    dietaryTags: activeTags,
+    radius: maxDistance ? maxDistance / 1000 : 50 
+  });
   const listings = useMemo(() => {
     const raw = listingsQuery.data?.data ?? [];
     let filtered = raw.filter((l) => !searchQuery || l.title.toLowerCase().includes(searchQuery.toLowerCase()) || l.merchant?.businessName.toLowerCase().includes(searchQuery.toLowerCase())).filter((l) => showFavorites ? l.merchant && isFavorite(l.merchant._id) : true).filter((l) => maxDistance ? (l.distance ?? 0) <= maxDistance : true);

@@ -10,17 +10,24 @@ export function CompleteProfileModal({ isOpen, onClose }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  
+  const [businessName, setBusinessName] = useState("");
+  const [address, setAddress] = useState("");
   const [error, setError] = useState(null);
 
-  // If user has no first name, they are forced to complete onboarding
-  const isForced = user?.role === "customer" && !user?.firstName;
+  // If user has no first name (customer) or no business name (merchant), they are forced to complete onboarding
+  const isForced = user?.role === "customer" 
+    ? (!user?.firstName || !user?.lastName || !user?.phone)
+    : (!user?.merchantProfile?.businessName || !user?.merchantProfile?.address || !user?.merchantProfile?.phone);
 
   // Initialize fields if they exist
   useEffect(() => {
     if (user && isOpen) {
       setFirstName(user.firstName || "");
       setLastName(user.lastName || "");
-      setPhone(user.phone || "");
+      setPhone(user.role === "merchant" ? (user.merchantProfile?.phone || user.phone || "") : (user.phone || ""));
+      setBusinessName(user.merchantProfile?.businessName || "");
+      setAddress(user.merchantProfile?.address || "");
       setError(null);
     }
   }, [user, isOpen]);
@@ -29,8 +36,12 @@ export function CompleteProfileModal({ isOpen, onClose }) {
     e.preventDefault();
     setError(null);
 
+    const payload = user.role === "merchant" 
+      ? { merchantProfile: { businessName, address, phone } }
+      : { firstName, lastName, phone };
+
     updateProfile.mutate(
-      { firstName, lastName, phone },
+      payload,
       {
         onSuccess: () => {
           onClose(); // Successfully updated
@@ -73,7 +84,7 @@ export function CompleteProfileModal({ isOpen, onClose }) {
               {isForced ? "Complete your profile" : "Edit Profile"}
             </h2>
             <p className="mt-1 text-sm text-surface-500">
-              {isForced ? "We need a few details before you can claim bundles." : "Update your personal details."}
+              {isForced ? "We need a few details before you can continue." : "Update your personal details."}
             </p>
           </div>
         </div>
@@ -86,52 +97,38 @@ export function CompleteProfileModal({ isOpen, onClose }) {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="complete-first-name" className="label">
-                First Name
-              </label>
-              <input
-                id="complete-first-name"
-                type="text"
-                className="input"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-              />
+          {user?.role === "customer" ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="complete-first-name" className="label">First Name</label>
+                <input id="complete-first-name" type="text" className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+              </div>
+              <div>
+                <label htmlFor="complete-last-name" className="label">Last Name</label>
+                <input id="complete-last-name" type="text" className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+              </div>
             </div>
-            <div>
-              <label htmlFor="complete-last-name" className="label">
-                Last Name
-              </label>
-              <input
-                id="complete-last-name"
-                type="text"
-                className="input"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-              />
-            </div>
-          </div>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="complete-business-name" className="label">Business Name</label>
+                <input id="complete-business-name" type="text" className="input" value={businessName} onChange={(e) => setBusinessName(e.target.value)} required />
+              </div>
+              <div>
+                <label htmlFor="complete-address" className="label">Store Address</label>
+                <input id="complete-address" type="text" className="input" value={address} onChange={(e) => setAddress(e.target.value)} required />
+              </div>
+            </>
+          )}
 
           <div>
-            <label htmlFor="complete-phone" className="label">
-              Phone Number
-            </label>
-            <input
-              id="complete-phone"
-              type="tel"
-              className="input"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
+            <label htmlFor="complete-phone" className="label">Phone Number</label>
+            <input id="complete-phone" type="tel" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} required />
           </div>
 
           <button
             type="submit"
-            disabled={updateProfile.isPending || !firstName || !lastName || !phone}
+            disabled={updateProfile.isPending || (user?.role === "customer" ? (!firstName || !lastName || !phone) : (!businessName || !address || !phone))}
             className="btn-primary mt-2 w-full flex items-center justify-center gap-2"
           >
             {updateProfile.isPending ? (

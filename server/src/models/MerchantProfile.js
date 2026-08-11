@@ -71,6 +71,14 @@ const merchantProfileSchema = new Schema(
       type: [String],
       default: []
     },
+    pickupInstructions: {
+      type: String,
+      default: ""
+    },
+    languages: {
+      type: [String],
+      default: []
+    },
     operatingHours: {
       type: [
         {

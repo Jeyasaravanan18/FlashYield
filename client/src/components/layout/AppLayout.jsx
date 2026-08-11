@@ -58,8 +58,12 @@ export function AppLayout() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && user?.role === "customer" && !user?.firstName) {
-      setCompleteProfileOpen(true);
+    if (isAuthenticated && user) {
+      if (user.role === "customer" && (!user.firstName || !user.lastName || !user.phone)) {
+        setCompleteProfileOpen(true);
+      } else if (user.role === "merchant" && (!user.merchantProfile?.businessName || !user.merchantProfile?.address || !user.merchantProfile?.phone)) {
+        setCompleteProfileOpen(true);
+      }
     }
   }, [isAuthenticated, user]);
 

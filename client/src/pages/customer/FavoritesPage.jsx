@@ -8,7 +8,7 @@ import { useMemo } from "react";
 function FavoritesPage() {
   const { lat, lng } = useLocationStore();
   const { favorites } = useFavoritesStore();
-  const listingsQuery = useNearbyListings({ lng, lat });
+  const listingsQuery = useNearbyListings({ lng, lat, radius: 50 });
   const favoriteListings = useMemo(() => {
     if (!listingsQuery.data?.data) return [];
     return listingsQuery.data.data.filter(

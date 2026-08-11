@@ -104,8 +104,12 @@ export function AuthModal() {
         return;
       }
       const merchantProfile = role === "merchant" ? merchantDetails : undefined;
+      const fn = (role === "customer" && firstName.trim()) ? firstName.trim() : undefined;
+      const ln = (role === "customer" && lastName.trim()) ? lastName.trim() : undefined;
+      const ph = (role === "customer" && phone.trim()) ? phone.trim() : undefined;
+      
       register.mutate(
-        { email, password, role, firstName, lastName, phone, merchantProfile },
+        { email, password, role, firstName: fn, lastName: ln, phone: ph, merchantProfile },
         {
           onSuccess: (data) => {
             setMessage(data.message || "Account created. Please verify your email.");

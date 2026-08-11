@@ -3,6 +3,7 @@ function validate(schemas) {
   return (req, res, next) => {
     try {
       if (schemas.body) {
+        console.log("Validating body with keys:", schemas.body.shape ? Object.keys(schemas.body.shape) : "No shape");
         req.body = schemas.body.parse(req.body);
       }
       if (schemas.query) {
@@ -14,14 +15,14 @@ function validate(schemas) {
       next();
     } catch (err) {
       if (err instanceof ZodError) {
+        console.error("Zod Validation Error:", JSON.stringify(err.errors, null, 2));
+        console.error("Request Body:", req.body);
         res.status(400).json({
           error: {
             code: "VALIDATION_ERROR",
             message: "Request validation failed",
-            details: err.errors.map((e) => ({
-              path: e.path.join("."),
-              message: e.message
-            }))
+            details: err.errors,
+            schemaKeys: schemas.body && schemas.body.shape ? Object.keys(schemas.body.shape) : "Unknown"
           }
         });
         return;

@@ -76,6 +76,10 @@ api.interceptors.response.use(
 function getErrorMessage(error) {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data;
+    if (data?.error?.code === "VALIDATION_ERROR" && data?.error?.details?.length > 0) {
+      const detailsStr = data.error.details.map(d => d.message).join(", ");
+      return `${data.error.message}: ${detailsStr}`;
+    }
     return data?.error?.message || error.message || "An unexpected error occurred";
   }
   if (error instanceof Error) {

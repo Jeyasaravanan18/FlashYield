@@ -452,7 +452,9 @@ router.get("/profile-tools", authenticate, roleGuard("merchant"), async (req, re
       verifiedBadge: profile.verificationStatus === "approved",
       storeHours: profile.operatingHours,
       holidayClosures: [],
-      pickupInstructions: "Show your claim token at the counter."
+      pickupInstructions: profile.pickupInstructions || "Show your claim token at the counter.",
+      languages: profile.languages?.join(", ") || "English",
+      location: profile.location
     });
   } catch (err) {
     next(err);
@@ -470,7 +472,8 @@ router.patch("/profile-tools", authenticate, roleGuard("merchant"), async (req, 
           operatingHours: updates.storeHours ?? profile.operatingHours,
           pickupInstructions: updates.pickupInstructions ?? profile.pickupInstructions,
           languages: updates.languages ?? profile.languages,
-          verifiedBadge: updates.verifiedBadge ?? profile.verifiedBadge
+          verifiedBadge: updates.verifiedBadge ?? profile.verifiedBadge,
+          ...(updates.location ? { location: { type: "Point", coordinates: [updates.location.lng, updates.location.lat] } } : {})
         }
       }
     );

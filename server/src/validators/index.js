@@ -185,9 +185,14 @@ const objectIdParamSchema = z.object({
   id: objectIdSchema
 });
 const updateProfileSchema = z.object({
-  firstName: z.string().trim().min(1, "First name is required"),
-  lastName: z.string().trim().min(1, "Last name is required"),
-  phone: z.string().trim().min(5, "Phone number is too short").max(20, "Phone number is too long")
+  firstName: z.string().trim().min(1, "First name is required").optional(),
+  lastName: z.string().trim().min(1, "Last name is required").optional(),
+  phone: z.string().trim().min(5, "Phone number is too short").max(20, "Phone number is too long").optional(),
+  merchantProfile: z.object({
+    businessName: z.string().trim().min(1, "Business name is required").optional(),
+    address: z.string().trim().min(1, "Address is required").optional(),
+    phone: z.string().trim().min(5, "Phone number is too short").optional()
+  }).optional()
 });
 export {
   auditLogQuerySchema,
