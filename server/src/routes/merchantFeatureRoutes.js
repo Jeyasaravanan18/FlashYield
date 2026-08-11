@@ -246,28 +246,35 @@ router.post("/queue/:claimId/no-show", authenticate, roleGuard("merchant"), asyn
     if (!claim || String(claim.listingId?.merchantId) !== String(profile._id)) throw new NotFoundError("Claim not found");
     await MerchantNoShow.findOneAndUpdate({ merchantId: profile._id, customerId: claim.customerId }, { $inc: { count: 1 } }, { upsert: true, new: true });
     await Claim.updateOne({ _id: claim._id }, { $set: { status: "missed" } });
-    
-    // Ban user for 3 days and cancel active claims
+    // Increment noShowCount and conditionally ban if > 3
     const { User } = await import("../models/User.js");
-    const penaltyDurationHours = 72;
-    const bannedUntil = new Date(Date.now() + penaltyDurationHours * 60 * 60 * 1000);
-    await User.updateOne({ _id: claim.customerId }, { $set: { claimBannedUntil: bannedUntil }, $inc: { noShowCount: 1 } });
+    const user = await User.findOneAndUpdate(
+      { _id: claim.customerId },
+      { $inc: { noShowCount: 1 } },
+      { new: true }
+    );
     
-    const otherClaims = await Claim.find({ customerId: claim.customerId, status: "reserved" });
-    if (otherClaims.length > 0) {
-      const claimIds = otherClaims.map(c => c._id);
-      await Claim.updateMany({ _id: { $in: claimIds } }, { $set: { status: "cancelled" } });
+    if (user && user.noShowCount > 3) {
+      const penaltyDurationHours = 72;
+      const bannedUntil = new Date(Date.now() + penaltyDurationHours * 60 * 60 * 1000);
+      await User.updateOne({ _id: claim.customerId }, { $set: { claimBannedUntil: bannedUntil } });
       
-      const listingIncrements = new Map();
-      for (const c of otherClaims) {
-        const key = c.listingId.toString();
-        listingIncrements.set(key, (listingIncrements.get(key) || 0) + (c.quantity || 1));
-      }
-      for (const [listingId, increment] of listingIncrements) {
-        await Listing.findOneAndUpdate(
-          { _id: listingId, status: { $in: ["active", "sold_out"] } },
-          { $inc: { quantityAvailable: increment }, $set: { status: "active" } }
-        );
+      const otherClaims = await Claim.find({ customerId: claim.customerId, status: "reserved" });
+      if (otherClaims.length > 0) {
+        const claimIds = otherClaims.map(c => c._id);
+        await Claim.updateMany({ _id: { $in: claimIds } }, { $set: { status: "cancelled" } });
+        
+        const listingIncrements = new Map();
+        for (const c of otherClaims) {
+          const key = c.listingId.toString();
+          listingIncrements.set(key, (listingIncrements.get(key) || 0) + (c.quantity || 1));
+        }
+        for (const [listingId, increment] of listingIncrements) {
+          await Listing.findOneAndUpdate(
+            { _id: listingId, status: { $in: ["active", "sold_out"] } },
+            { $inc: { quantityAvailable: increment }, $set: { status: "active" } }
+          );
+        }
       }
     }
     

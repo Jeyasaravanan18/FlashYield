@@ -58,7 +58,7 @@ const claimService = {
 
     if (user.claimBannedUntil && user.claimBannedUntil > new Date()) {
       throw new ForbiddenError(
-        "You are temporarily banned from claiming items due to a recent no-show. Try again later."
+        "You are temporarily banned from claiming items due to multiple recent no-shows. Try again later."
       );
     }
 

@@ -64,44 +64,55 @@ function startCronJobs() {
         "Expired stale claims via cron"
       );
 
-      // Penalize users for no-shows
-      const penaltyDurationHours = 72;
-      const bannedUntil = new Date(now.getTime() + penaltyDurationHours * 60 * 60 * 1000);
+      // Increment noShowCount for users who no-showed
       const customerIds = [...new Set(claimsToExpire.map(c => c.customerId.toString()))];
-      
       const { User } = await import("../models/User.js");
+      
       await User.updateMany(
         { _id: { $in: customerIds } },
-        { 
-          $inc: { noShowCount: 1 },
-          $set: { claimBannedUntil: bannedUntil } 
-        }
+        { $inc: { noShowCount: 1 } }
       );
 
+      // Return quantity for the claims that just expired
       const listingIncrements = new Map();
       for (const claim of claimsToExpire) {
         const key = claim.listingId.toString();
         listingIncrements.set(key, (listingIncrements.get(key) || 0) + (claim.quantity || 1));
       }
 
-      // Also cancel any other active reservations for these users
-      const otherClaims = await Claim.find({ 
-        customerId: { $in: customerIds }, 
-        status: "reserved" 
-      });
-      if (otherClaims.length > 0) {
-        const otherClaimIds = otherClaims.map((c) => c._id);
-        await Claim.updateMany(
-          { _id: { $in: otherClaimIds } },
-          { $set: { status: "cancelled" } }
+      // Ban users with > 3 no-shows and cancel their other active reservations
+      const usersToBan = await User.find({ _id: { $in: customerIds }, noShowCount: { $gt: 3 } });
+      const bannedCustomerIds = usersToBan.map(u => u._id.toString());
+
+      if (bannedCustomerIds.length > 0) {
+        const penaltyDurationHours = 72;
+        const bannedUntil = new Date(now.getTime() + penaltyDurationHours * 60 * 60 * 1000);
+        
+        await User.updateMany(
+          { _id: { $in: bannedCustomerIds } },
+          { $set: { claimBannedUntil: bannedUntil } }
         );
-        for (const claim of otherClaims) {
-          const key = claim.listingId.toString();
-          listingIncrements.set(key, (listingIncrements.get(key) || 0) + (claim.quantity || 1));
+
+        const otherClaims = await Claim.find({ 
+          customerId: { $in: bannedCustomerIds }, 
+          status: "reserved" 
+        });
+        
+        if (otherClaims.length > 0) {
+          const otherClaimIds = otherClaims.map((c) => c._id);
+          await Claim.updateMany(
+            { _id: { $in: otherClaimIds } },
+            { $set: { status: "cancelled" } }
+          );
+          for (const claim of otherClaims) {
+            const key = claim.listingId.toString();
+            listingIncrements.set(key, (listingIncrements.get(key) || 0) + (claim.quantity || 1));
+          }
+          logger.info({ count: otherClaims.length }, "Cancelled other active claims for banned users");
         }
-        logger.info({ count: otherClaims.length }, "Cancelled other active claims for banned users");
       }
 
+      // Process all inventory returns (expired + cancelled)
       for (const [listingId, increment] of listingIncrements) {
         await Listing.findOneAndUpdate(
           {
