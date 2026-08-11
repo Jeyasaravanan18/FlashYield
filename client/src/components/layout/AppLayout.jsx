@@ -33,6 +33,7 @@ import { useNotificationStore } from "../../store/notificationStore";
 export function AppLayout() {
   const { user, isAuthenticated, openAuthModal } = useAuthStore();
   const { label: locationLabel, status: locationStatus, openLocationModal, requestLocation } = useLocationStore();
+  const hasLocation = useLocationStore((state) => state.hasLocation);
   const logout = useLogout();
   const navigate = useNavigate();
   const location = useLocation();
@@ -68,9 +69,19 @@ export function AppLayout() {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    if (user.role === "merchant") {
+      const hasMerchantLocation = Boolean(user.merchantProfile?.location?.coordinates?.length === 2);
+      if (!hasMerchantLocation && !location.pathname.startsWith("/merchant/onboarding")) {
+        navigate("/merchant/onboarding", { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, location.pathname, navigate]);
+
+  useEffect(() => {
     if (user?.role === "merchant") return;
-    
-    if (locationStatus === "idle") {
+
+    if (!hasLocation && locationStatus === "idle") {
       if (navigator.permissions && navigator.permissions.query) {
         navigator.permissions.query({ name: "geolocation" }).then((result) => {
           if (result.state === "granted") {
@@ -83,7 +94,7 @@ export function AppLayout() {
         openLocationModal();
       }
     }
-  }, [locationStatus, user, openLocationModal, requestLocation]);
+  }, [locationStatus, user, openLocationModal, requestLocation, hasLocation]);
 
   const handleLogout = () => {
     logout.mutate(void 0, {
@@ -92,10 +103,11 @@ export function AppLayout() {
   };
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
+  const forceCustomerLocation = isAuthenticated && user?.role === "customer" && !hasLocation;
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-100">
-      <LocationModal />
+      <LocationModal force={forceCustomerLocation} />
       <AuthModal />
       <CompleteProfileModal isOpen={completeProfileOpen} onClose={() => setCompleteProfileOpen(false)} />
       

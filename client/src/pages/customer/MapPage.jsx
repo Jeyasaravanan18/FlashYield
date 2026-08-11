@@ -34,8 +34,9 @@ function RecenterMap({ center }) {
 }
 function MapPage() {
   const { lat, lng, requestLocation } = useLocationStore();
+  const hasLocation = useLocationStore((state) => state.hasLocation);
   const [selectedMerchant, setSelectedMerchant] = useState(null);
-  const listingsQuery = useNearbyListings({ lng, lat, radius: 15 });
+  const listingsQuery = useNearbyListings({ lng, lat, radius: 5, hasLocation });
   const listings = listingsQuery.data?.data ?? [];
   const merchantGroups = useMemo(() => {
     const groups = {};
@@ -56,124 +57,196 @@ function MapPage() {
     return Object.values(groups);
   }, [listings]);
   const activeDeals = listings.filter((l) => l.quantityAvailable > 0).length;
-  return /* @__PURE__ */ jsxs("div", { className: "bg-surface-100 min-h-screen flex flex-col", children: [
-    /* @__PURE__ */ jsxs("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 w-full", children: [
-      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 text-xs font-medium text-surface-400 mb-2", children: [
-        /* @__PURE__ */ jsx("div", { className: "w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse" }),
-        merchantGroups.length,
-        " merchants \xB7 ",
-        activeDeals,
-        " active deals nearby"
-      ] }),
-      /* @__PURE__ */ jsxs("h1", { className: "font-display font-bold text-surface-900 uppercase leading-[0.88] tracking-tight text-4xl sm:text-5xl", children: [
-        "Nearby ",
-        /* @__PURE__ */ jsx("span", { className: "bg-gradient-to-r from-brand-500 to-brand-400 bg-clip-text text-transparent", children: "Deals Map" })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx("div", { className: "flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full", children: /* @__PURE__ */ jsxs("div", { className: "grid lg:grid-cols-[1fr_380px] gap-6 h-[calc(100vh-220px)] min-h-[500px]", children: [
-      /* @__PURE__ */ jsxs("div", { className: "card overflow-hidden p-1.5 relative", children: [
-        /* @__PURE__ */ jsxs(
-          MapContainer,
-          {
-            center: [lat, lng],
-            zoom: 14,
-            style: { height: "100%", width: "100%", borderRadius: "0.75rem" },
-            attributionControl: false,
+  return /* @__PURE__ */ jsxs("div", {
+    className: "bg-surface-100 min-h-screen flex flex-col",
+    children: [
+      /* @__PURE__ */ jsxs("div", {
+        className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 w-full",
+        children: [
+          /* @__PURE__ */ jsxs("div", {
+            className: "flex items-center gap-2 text-xs font-medium text-surface-400 mb-2",
             children: [
-              /* @__PURE__ */ jsx(TileLayer, { url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }),
-              /* @__PURE__ */ jsx(RecenterMap, { center: [lat, lng] }),
-              merchantGroups.map((merchant) => /* @__PURE__ */ jsx(
-                Marker,
-                {
-                  position: [merchant.coordinates[1], merchant.coordinates[0]],
-                  icon: activeMarkerIcon,
-                  eventHandlers: {
-                    click: () => setSelectedMerchant(merchant)
-                  }
-                },
-                merchant.merchantId
-              ))
+              /* @__PURE__ */ jsx("div", { className: "w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse" }),
+              merchantGroups.length,
+              " merchants · ",
+              activeDeals,
+              " active deals nearby"
             ]
-          }
-        ),
-        /* @__PURE__ */ jsxs(
-          "button",
-          {
-            onClick: requestLocation,
-            className: "absolute bottom-6 right-6 z-[400] bg-white rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-brand-500 transition-colors border border-surface-200",
+          }),
+          /* @__PURE__ */ jsxs("h1", {
+            className: "font-display font-bold text-surface-900 uppercase leading-[0.88] tracking-tight text-4xl sm:text-5xl",
             children: [
-              /* @__PURE__ */ jsx(Navigation, { className: "w-4 h-4" }),
-              "My Location"
+              "Nearby ",
+              /* @__PURE__ */ jsx("span", {
+                className: "bg-gradient-to-r from-brand-500 to-brand-400 bg-clip-text text-transparent",
+                children: "Deals Map"
+              })
             ]
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsx("div", { className: "overflow-y-auto space-y-4 pr-1", children: listingsQuery.isLoading ? /* @__PURE__ */ jsx("div", { className: "space-y-4", children: [1, 2, 3].map((i) => /* @__PURE__ */ jsx("div", { className: "card p-5 h-36 skeleton" }, i)) }) : selectedMerchant ? /* @__PURE__ */ jsxs(Fragment, { children: [
-        /* @__PURE__ */ jsxs("div", { className: "card p-5 bg-gradient-to-br from-surface-900 to-surface-950 text-white", children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-start mb-3", children: [
-            /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsx("div", { className: "text-xs font-medium text-surface-400 mb-1", children: "Selected Store" }),
-              /* @__PURE__ */ jsx("h3", { className: "font-display text-xl font-bold uppercase", children: selectedMerchant.businessName })
-            ] }),
-            /* @__PURE__ */ jsx(
-              "button",
-              {
-                onClick: () => setSelectedMerchant(null),
-                className: "text-xs font-medium text-surface-400 hover:text-white transition-colors",
-                children: "Clear \xD7"
-              }
-            )
-          ] }),
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1.5 text-sm text-surface-400", children: [
-            /* @__PURE__ */ jsx(MapPin, { className: "w-3 h-3" }),
-            selectedMerchant.address
-          ] })
-        ] }),
-        selectedMerchant.listings.map((listing) => /* @__PURE__ */ jsx(MerchantListingCard, { listing }, listing._id))
-      ] }) : merchantGroups.length === 0 ? /* @__PURE__ */ jsxs("div", { className: "card p-8 text-center", children: [
-        /* @__PURE__ */ jsx(MapPin, { className: "w-8 h-8 text-surface-300 mx-auto mb-3" }),
-        /* @__PURE__ */ jsx("h3", { className: "font-semibold text-surface-900 mb-1", children: "No deals nearby" }),
-        /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-400", children: "Check back later for flash sales near you." })
-      ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-        /* @__PURE__ */ jsxs("div", { className: "text-xs font-medium text-surface-400 uppercase tracking-wider px-1", children: [
-          "All Merchants (",
-          merchantGroups.length,
-          ")"
-        ] }),
-        merchantGroups.map((merchant) => /* @__PURE__ */ jsxs(
-          "button",
-          {
-            onClick: () => setSelectedMerchant(merchant),
-            className: "card p-5 w-full text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200",
-            children: [
-              /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-start mb-2", children: [
-                /* @__PURE__ */ jsx("h3", { className: "font-semibold text-surface-900", children: merchant.businessName }),
-                /* @__PURE__ */ jsxs("span", { className: "badge-success text-[10px]", children: [
-                  merchant.listings.length,
-                  " deal",
-                  merchant.listings.length !== 1 ? "s" : ""
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1.5 text-sm text-surface-400 mb-3", children: [
-                /* @__PURE__ */ jsx(MapPin, { className: "w-3 h-3" }),
-                merchant.address
-              ] }),
-              /* @__PURE__ */ jsx("div", { className: "flex gap-2 flex-wrap", children: merchant.listings.slice(0, 3).map((l) => {
-                const disc = l.originalPrice > 0 ? Math.round((l.originalPrice - l.discountedPrice) / l.originalPrice * 100) : 0;
-                return /* @__PURE__ */ jsxs("span", { className: "text-xs bg-brand-50 text-brand-600 font-medium px-2 py-1 rounded-lg", children: [
-                  l.title,
-                  " \xB7 -",
-                  disc,
-                  "%"
-                ] }, l._id);
-              }) })
-            ]
-          },
-          merchant.merchantId
-        ))
-      ] }) })
-    ] }) })
-  ] });
+          })
+        ]
+      }),
+      !hasLocation ? /* @__PURE__ */ jsx("div", {
+        className: "flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full",
+        children: /* @__PURE__ */ jsxs("div", {
+          className: "card p-10 text-center",
+          children: [
+            /* @__PURE__ */ jsx(MapPin, { className: "w-10 h-10 text-surface-300 mx-auto mb-3" }),
+            /* @__PURE__ */ jsx("h3", {
+              className: "font-semibold text-surface-900 mb-1",
+              children: "Choose your area to load nearby deals"
+            }),
+            /* @__PURE__ */ jsx("p", {
+              className: "text-sm text-surface-400 mb-4",
+              children: "The map uses your selected location or pincode. Until then, no default city is assumed."
+            }),
+            /* @__PURE__ */ jsx("button", { onClick: requestLocation, className: "btn-primary", children: "Set my location" })
+          ]
+        })
+      }) : /* @__PURE__ */ jsx("div", {
+        className: "flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full",
+        children: /* @__PURE__ */ jsxs("div", {
+          className: "grid lg:grid-cols-[1fr_380px] gap-6 h-[calc(100vh-220px)] min-h-[500px]",
+          children: [
+            /* @__PURE__ */ jsxs("div", {
+              className: "card overflow-hidden p-1.5 relative",
+              children: [
+                /* @__PURE__ */ jsxs(MapContainer, {
+                  center: [lat, lng],
+                  zoom: 14,
+                  style: { height: "100%", width: "100%", borderRadius: "0.75rem" },
+                  attributionControl: false,
+                  children: [
+                    /* @__PURE__ */ jsx(TileLayer, { url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }),
+                    /* @__PURE__ */ jsx(RecenterMap, { center: [lat, lng] }),
+                    merchantGroups.map((merchant) => /* @__PURE__ */ jsx(
+                      Marker,
+                      {
+                        position: [merchant.coordinates[1], merchant.coordinates[0]],
+                        icon: activeMarkerIcon,
+                        eventHandlers: { click: () => setSelectedMerchant(merchant) }
+                      },
+                      merchant.merchantId
+                    ))
+                  ]
+                }),
+                /* @__PURE__ */ jsxs("button", {
+                  onClick: requestLocation,
+                  className: "absolute bottom-6 right-6 z-[400] bg-white rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-brand-500 transition-colors border border-surface-200",
+                  children: [
+                    /* @__PURE__ */ jsx(Navigation, { className: "w-4 h-4" }),
+                    "My Location"
+                  ]
+                })
+              ]
+            }),
+            /* @__PURE__ */ jsx("div", {
+              className: "overflow-y-auto space-y-4 pr-1",
+              children: listingsQuery.isLoading ? /* @__PURE__ */ jsx("div", {
+                className: "space-y-4",
+                children: [1, 2, 3].map((i) => /* @__PURE__ */ jsx("div", { className: "card p-5 h-36 skeleton" }, i))
+              }) : selectedMerchant ? /* @__PURE__ */ jsxs(Fragment, {
+                children: [
+                  /* @__PURE__ */ jsxs("div", {
+                    className: "card p-5 bg-gradient-to-br from-surface-900 to-surface-950 text-white",
+                    children: [
+                      /* @__PURE__ */ jsxs("div", {
+                        className: "flex justify-between items-start mb-3",
+                        children: [
+                          /* @__PURE__ */ jsxs("div", {
+                            children: [
+                              /* @__PURE__ */ jsx("div", { className: "text-xs font-medium text-surface-400 mb-1", children: "Selected Store" }),
+                              /* @__PURE__ */ jsx("h3", { className: "font-display text-xl font-bold uppercase", children: selectedMerchant.businessName })
+                            ]
+                          }),
+                          /* @__PURE__ */ jsx("button", {
+                            onClick: () => setSelectedMerchant(null),
+                            className: "text-xs font-medium text-surface-400 hover:text-white transition-colors",
+                            children: "Clear ×"
+                          })
+                        ]
+                      }),
+                      /* @__PURE__ */ jsxs("div", {
+                        className: "flex items-center gap-1.5 text-sm text-surface-400",
+                        children: [
+                          /* @__PURE__ */ jsx(MapPin, { className: "w-3 h-3" }),
+                          selectedMerchant.address
+                        ]
+                      })
+                    ]
+                  }),
+                  selectedMerchant.listings.map((listing) => /* @__PURE__ */ jsx(MerchantListingCard, { listing }, listing._id))
+                ]
+              }) : merchantGroups.length === 0 ? /* @__PURE__ */ jsxs("div", {
+                className: "card p-8 text-center",
+                children: [
+                  /* @__PURE__ */ jsx(MapPin, { className: "w-8 h-8 text-surface-300 mx-auto mb-3" }),
+                  /* @__PURE__ */ jsx("h3", { className: "font-semibold text-surface-900 mb-1", children: "No deals nearby" }),
+                  /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-400", children: "Check back later for flash sales near you." })
+                ]
+              }) : /* @__PURE__ */ jsxs(Fragment, {
+                children: [
+                  /* @__PURE__ */ jsxs("div", {
+                    className: "text-xs font-medium text-surface-400 uppercase tracking-wider px-1",
+                    children: [
+                      "All Merchants (",
+                      merchantGroups.length,
+                      ")"
+                    ]
+                  }),
+                  merchantGroups.map((merchant) => /* @__PURE__ */ jsxs(
+                    "button",
+                    {
+                      onClick: () => setSelectedMerchant(merchant),
+                      className: "card p-5 w-full text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200",
+                      children: [
+                        /* @__PURE__ */ jsxs("div", {
+                          className: "flex justify-between items-start mb-2",
+                          children: [
+                            /* @__PURE__ */ jsx("h3", { className: "font-semibold text-surface-900", children: merchant.businessName }),
+                            /* @__PURE__ */ jsxs("span", {
+                              className: "badge-success text-[10px]",
+                              children: [
+                                merchant.listings.length,
+                                " deal",
+                                merchant.listings.length !== 1 ? "s" : ""
+                              ]
+                            })
+                          ]
+                        }),
+                        /* @__PURE__ */ jsxs("div", {
+                          className: "flex items-center gap-1.5 text-sm text-surface-400 mb-3",
+                          children: [
+                            /* @__PURE__ */ jsx(MapPin, { className: "w-3 h-3" }),
+                            merchant.address
+                          ]
+                        }),
+                        /* @__PURE__ */ jsx("div", {
+                          className: "flex gap-2 flex-wrap",
+                          children: merchant.listings.slice(0, 3).map((l) => {
+                            const disc = l.originalPrice > 0 ? Math.round((l.originalPrice - l.discountedPrice) / l.originalPrice * 100) : 0;
+                            return /* @__PURE__ */ jsxs("span", {
+                              className: "text-xs bg-brand-50 text-brand-600 font-medium px-2 py-1 rounded-lg",
+                              children: [
+                                l.title,
+                                " · -",
+                                disc,
+                                "%"
+                              ]
+                            }, l._id);
+                          })
+                        })
+                      ]
+                    },
+                    merchant.merchantId
+                  ))
+                ]
+              })
+            })
+          ]
+        })
+      })
+    ]
+  });
 }
 function MerchantListingCard({ listing }) {
   const countdown = useCountdown(listing.claimWindowEnd);

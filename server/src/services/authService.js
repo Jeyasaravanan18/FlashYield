@@ -284,19 +284,25 @@ async function createMerchantProfileForUser(user, profileData) {
   }
   const existing = await MerchantProfile.findOne({ userId: user._id });
   if (existing) return existing;
-  let geocoded = await Promise.race([
+  const manualLocation = profileData.location && Number.isFinite(profileData.location.lat) && Number.isFinite(profileData.location.lng)
+    ? {
+        type: "Point",
+        coordinates: [profileData.location.lng, profileData.location.lat]
+      }
+    : null;
+  const geocoded = manualLocation ? null : await Promise.race([
     geocodingService.geocodeAddress(profileData.address),
     new Promise((resolve) => setTimeout(() => resolve(null), 1200))
   ]);
-  if (!geocoded) {
-    geocoded = { lat: 12.9716, lng: 77.5946 };
+  if (!manualLocation && !geocoded) {
+    throw new BadRequestError("Unable to geocode merchant address. Please enter a complete address with pincode or set the store location manually.");
   }
   return MerchantProfile.create({
     userId: user._id,
     businessName: profileData.businessName,
     description: profileData.description || "",
     address: profileData.address,
-    location: {
+    location: manualLocation || {
       type: "Point",
       coordinates: [geocoded.lng, geocoded.lat]
     },

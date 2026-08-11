@@ -7,8 +7,9 @@ import { Heart, Search } from "lucide-react";
 import { useMemo } from "react";
 function FavoritesPage() {
   const { lat, lng } = useLocationStore();
+  const hasLocation = useLocationStore((state) => state.hasLocation);
   const { favorites } = useFavoritesStore();
-  const listingsQuery = useNearbyListings({ lng, lat, radius: 50 });
+  const listingsQuery = useNearbyListings({ lng, lat, radius: 5, hasLocation });
   const favoriteListings = useMemo(() => {
     if (!listingsQuery.data?.data) return [];
     return listingsQuery.data.data.filter(

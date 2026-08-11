@@ -55,14 +55,16 @@ const createMerchantProfileSchema = z.object({
   description: z.string().trim().max(2e3).default(""),
   address: z.string().trim().min(1, "Address is required"),
   phone: z.string().trim().min(5, "Phone number is too short").max(20, "Phone number is too long"),
-  operatingHours: z.array(operatingHourSchema).optional().default([])
+  operatingHours: z.array(operatingHourSchema).optional().default([]),
+  location: geoPointSchema.optional()
 });
 const updateMerchantProfileSchema = z.object({
   businessName: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(2e3).optional(),
   address: z.string().trim().min(1).optional(),
   phone: z.string().trim().min(5).max(20).optional(),
-  operatingHours: z.array(operatingHourSchema).optional()
+  operatingHours: z.array(operatingHourSchema).optional(),
+  location: geoPointSchema.optional()
 });
 const createListingSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),

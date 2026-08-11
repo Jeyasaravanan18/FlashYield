@@ -1,6 +1,5 @@
 import { create } from "zustand";
-const DEFAULT_LAT = 12.9716;
-const DEFAULT_LNG = 77.5946;
+const DEFAULT_LABEL = "Choose your area";
 async function reverseGeocode(latitude, longitude) {
   try {
     const res = await fetch(
@@ -23,8 +22,8 @@ async function fallbackIpLocation() {
     const data = await res.json();
     const label = [data.city, data.region].filter(Boolean).join(", ");
     return {
-      lat: Number(data.latitude) || DEFAULT_LAT,
-      lng: Number(data.longitude) || DEFAULT_LNG,
+      lat: Number(data.latitude) || null,
+      lng: Number(data.longitude) || null,
       label: label || "Your Area"
     };
   } catch {
@@ -32,11 +31,13 @@ async function fallbackIpLocation() {
   }
 }
 const useLocationStore = create((set, get) => ({
-  lat: DEFAULT_LAT,
-  lng: DEFAULT_LNG,
-  label: "Choose your area",
+  lat: null,
+  lng: null,
+  label: DEFAULT_LABEL,
   status: "idle",
   error: "",
+  hasLocation: false,
+  locationSource: "unset",
   isModalOpen: false,
   requestLocation: async () => {
     if (get().status === "requesting") return;
@@ -61,6 +62,8 @@ const useLocationStore = create((set, get) => ({
         lng: longitude,
         label,
         status: "granted",
+        hasLocation: true,
+        locationSource: "current",
         error: "",
         accuracyMeters: Math.round(accuracy || 0)
       });
@@ -73,25 +76,46 @@ const useLocationStore = create((set, get) => ({
           lng: fallback.lng,
           label: fallback.label,
           status: "fallback",
+          hasLocation: Boolean(fallback.lat && fallback.lng),
+          locationSource: "approximate",
           error: "Could not access precise device location. Showing approximate area instead."
         });
         return;
       }
       set({
-        lat: DEFAULT_LAT,
-        lng: DEFAULT_LNG,
-        label: "Choose your area",
+        lat: null,
+        lng: null,
+        label: DEFAULT_LABEL,
         status: "denied",
+        hasLocation: false,
+        locationSource: "unset",
         error: "Location access was denied or unavailable."
       });
     }
   },
   setLocation: (lat, lng, label) => {
-    set({ lat, lng, label, status: "granted", isModalOpen: false, error: "" });
+    set({
+      lat,
+      lng,
+      label,
+      status: "granted",
+      hasLocation: Number.isFinite(lat) && Number.isFinite(lng),
+      locationSource: "manual",
+      isModalOpen: false,
+      error: ""
+    });
   },
   openLocationModal: () => set({ isModalOpen: true }),
   closeLocationModal: () => set({ isModalOpen: false }),
-  resetLocation: () => set({ lat: DEFAULT_LAT, lng: DEFAULT_LNG, label: "Choose your area", status: "idle", error: "" })
+  resetLocation: () => set({
+    lat: null,
+    lng: null,
+    label: DEFAULT_LABEL,
+    status: "idle",
+    error: "",
+    hasLocation: false,
+    locationSource: "unset"
+  })
 }));
 export {
   useLocationStore

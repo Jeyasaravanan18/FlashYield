@@ -5,11 +5,12 @@ import { useLocationStore } from "../../store/locationStore";
 import { useNotificationStore } from "../../store/notificationStore";
 function CustomerNotificationBridge() {
   const { lat, lng } = useLocationStore();
+  const hasLocation = useLocationStore((state) => state.hasLocation);
   const favorites = useFavoritesStore((state) => state.favorites);
   const addNotification = useNotificationStore((state) => state.addNotification);
   const knownListings = useRef(null);
   const closingNotified = useRef(/* @__PURE__ */ new Set());
-  const { data } = useNearbyListings({ lat, lng, radius: 10 });
+  const { data } = useNearbyListings({ lat, lng, radius: 5, hasLocation });
   useEffect(() => {
     const listings = data?.data ?? [];
     if (!knownListings.current) {

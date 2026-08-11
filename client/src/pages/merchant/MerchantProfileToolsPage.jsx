@@ -42,8 +42,7 @@ export function MerchantProfileToolsPage() {
         // location.coordinates is [lng, lat]
         setPosition({ lat: data.location.coordinates[1], lng: data.location.coordinates[0] });
       } else {
-        // Default to a central location if not set (e.g., somewhere in India)
-        setPosition({ lat: 20.5937, lng: 78.9629 });
+        setPosition(null);
       }
     }
   }, [data]);
@@ -127,7 +126,7 @@ export function MerchantProfileToolsPage() {
               <MapPin className="w-4 h-4 text-brand-500" /> Store Location (Precise)
             </div>
             <p className="text-xs text-surface-400 mb-4">Click anywhere on the map to place the pin precisely on your store location.</p>
-            {position && (
+            {position ? (
               <div className="h-64 rounded-xl overflow-hidden border border-surface-200">
                 <MapContainer center={position} zoom={13} scrollWheelZoom={false} className="h-full w-full">
                   <TileLayer
@@ -136,6 +135,10 @@ export function MerchantProfileToolsPage() {
                   />
                   <LocationPicker position={position} setPosition={setPosition} />
                 </MapContainer>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-surface-200 bg-surface-50 p-6 text-sm text-surface-500">
+                Set a complete store address first so the precise map pin can be loaded.
               </div>
             )}
           </div>

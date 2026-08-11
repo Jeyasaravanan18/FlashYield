@@ -111,7 +111,7 @@ function useNearbyListings(params) {
       });
       return res.data;
     },
-    enabled: params.enabled !== false && params.lng !== 0 && params.lat !== 0,
+    enabled: params.enabled !== false && params.hasLocation !== false && Number.isFinite(params.lng) && Number.isFinite(params.lat),
     refetchInterval: 3e4
     // Refresh every 30s
   });

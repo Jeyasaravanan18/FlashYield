@@ -24,19 +24,27 @@ router.post(
       if (existing) {
         throw new ConflictError("Merchant profile already exists");
       }
-      let geocoded = await geocodingService.geocodeAddress(req.body.address);
-      if (!geocoded) {
-        geocoded = { lat: 12.9716, lng: 77.5946 };
+      const manualLocation = req.body.location && Number.isFinite(req.body.location.lat) && Number.isFinite(req.body.location.lng)
+        ? req.body.location
+        : null;
+      const geocoded = manualLocation ? null : await geocodingService.geocodeAddress(req.body.address);
+      if (!manualLocation && !geocoded) {
+        throw new BadRequestError("Unable to geocode merchant address. Enter a complete address or set the location manually.");
       }
       const profile = await MerchantProfile.create({
         userId: req.user.userId,
         businessName: req.body.businessName,
         description: req.body.description,
         address: req.body.address,
-        location: {
-          type: "Point",
-          coordinates: [geocoded.lng, geocoded.lat]
-        },
+        location: manualLocation
+          ? {
+              type: "Point",
+              coordinates: [manualLocation.lng, manualLocation.lat]
+            }
+          : {
+              type: "Point",
+              coordinates: [geocoded.lng, geocoded.lat]
+            },
         phone: req.body.phone,
         operatingHours: req.body.operatingHours,
         verificationStatus: "pending"
@@ -88,6 +96,12 @@ router.put(
           coordinates: [geocoded.lng, geocoded.lat]
         };
         profile.address = req.body.address;
+      }
+      if (req.body.location && Number.isFinite(req.body.location.lat) && Number.isFinite(req.body.location.lng)) {
+        profile.location = {
+          type: "Point",
+          coordinates: [req.body.location.lng, req.body.location.lat]
+        };
       }
       if (req.body.businessName) profile.businessName = req.body.businessName;
       if (req.body.description !== void 0) profile.description = req.body.description;

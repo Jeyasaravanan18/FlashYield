@@ -3,17 +3,18 @@ import { useState } from "react";
 import { useLocationStore } from "../../store/locationStore";
 import { useAuthStore } from "../../store/authStore";
 import { MapPin, X, Navigation, LogIn, Search, Loader2 } from "lucide-react";
-function LocationModal() {
+function LocationModal({ force = false }) {
   const { requestLocation, setLocation, isModalOpen, closeLocationModal, status, label, error } = useLocationStore();
   const { openAuthModal } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  if (!isModalOpen) return null;
+  if (!isModalOpen && !force) return null;
   const handleShareLocation = async () => {
     await requestLocation();
   };
   const handleDismiss = () => {
+    if (force) return;
     closeLocationModal();
   };
   const handleManualSearch = async (e) => {
@@ -37,12 +38,14 @@ function LocationModal() {
     const lng = parseFloat(result.lon);
     const label = result.display_name.split(",")[0];
     setLocation(lat, lng, label);
-    closeLocationModal();
+    if (!force) {
+      closeLocationModal();
+    }
   };
   return /* @__PURE__ */ jsxs("div", { className: "fixed inset-0 z-[999] flex items-center justify-center p-4 animate-fade-in", children: [
     /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm", onClick: handleDismiss }),
     /* @__PURE__ */ jsxs("div", { className: "relative bg-white rounded-3xl shadow-2xl max-w-[440px] w-full p-8 sm:p-10 animate-scale-in", children: [
-      /* @__PURE__ */ jsx(
+      !force && /* @__PURE__ */ jsx(
         "button",
         {
           onClick: handleDismiss,
@@ -55,9 +58,9 @@ function LocationModal() {
         /* @__PURE__ */ jsx("div", { className: "absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent-500 flex items-center justify-center shadow-md border-2 border-white", children: /* @__PURE__ */ jsx(Navigation, { className: "w-3 h-3 text-white" }) })
       ] }) }),
       /* @__PURE__ */ jsxs("h2", { className: "text-2xl font-normal tracking-tight text-surface-900 sm:text-3xl text-center mb-2", children: [
-        "Share location to find",
+        force ? "Set your area to continue" : "Share location to find",
         /* @__PURE__ */ jsx("br", {}),
-        "nearby flash deals"
+        force ? "nearby flash deals" : "nearby flash deals"
       ] }),
       /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-500 text-center mb-8 max-w-[280px] mx-auto", children: "See surplus food from kitchens closest to you and never miss a deal in your neighborhood." }),
       (status === "granted" || status === "fallback") && /* @__PURE__ */ jsxs("div", { className: "mb-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700", children: [
@@ -109,12 +112,12 @@ function LocationModal() {
         },
         i
       )) }),
-      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-4 my-5", children: [
+      !force && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-4 my-5", children: [
         /* @__PURE__ */ jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" }),
         /* @__PURE__ */ jsx("span", { className: "text-xs font-medium text-surface-400 uppercase", children: "already a user?" }),
         /* @__PURE__ */ jsx("div", { className: "flex-1 border-t border-dashed border-surface-200" })
       ] }),
-      /* @__PURE__ */ jsx("div", { className: "text-center", children: /* @__PURE__ */ jsxs(
+      !force && /* @__PURE__ */ jsx("div", { className: "text-center", children: /* @__PURE__ */ jsxs(
         "button",
         {
           onClick: () => {
@@ -128,7 +131,7 @@ function LocationModal() {
           ]
         }
       ) }),
-      /* @__PURE__ */ jsx(
+      !force && /* @__PURE__ */ jsx(
         "button",
         {
           onClick: handleDismiss,

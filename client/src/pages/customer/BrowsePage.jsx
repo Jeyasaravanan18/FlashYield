@@ -17,7 +17,7 @@ const CATEGORIES = [
   { id: "mixed_bundle", label: "Mixed" }
 ];
 function BrowsePage() {
-  const { lat, lng } = useLocationStore();
+  const { lat, lng, hasLocation, requestLocation, setLocation } = useLocationStore();
   const { isFavorite } = useFavoritesStore();
   const [activeCategory, setActiveCategory] = useState("");
   const [activeTags, setActiveTags] = useState([]);
@@ -25,12 +25,16 @@ function BrowsePage() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [sortBy, setSortBy] = useState("distance");
   const [maxDistance, setMaxDistance] = useState("");
+  const [areaQuery, setAreaQuery] = useState("");
+  const [areaResults, setAreaResults] = useState([]);
+  const [isAreaSearching, setIsAreaSearching] = useState(false);
   const listingsQuery = useNearbyListings({ 
     lng, 
     lat, 
     category: activeCategory || void 0, 
     dietaryTags: activeTags,
-    radius: maxDistance ? maxDistance / 1000 : 50 
+    radius: maxDistance ? maxDistance / 1000 : 5,
+    hasLocation
   });
   const listings = useMemo(() => {
     const raw = listingsQuery.data?.data ?? [];
@@ -44,6 +48,187 @@ function BrowsePage() {
   }, [listingsQuery.data, searchQuery, showFavorites, maxDistance, sortBy, isFavorite]);
   const liveBundles = listings.filter((listing) => listing.quantityAvailable > 0).length;
   const nearbyMerchantCount = new Set(listings.map((l) => l.merchant?._id).filter(Boolean)).size;
+  const handleAreaSearch = async (e) => {
+    e.preventDefault();
+    if (!areaQuery.trim()) return;
+    setIsAreaSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(areaQuery)}&limit=6`, {
+        headers: { "Accept-Language": "en" }
+      });
+      const data = await res.json();
+      setAreaResults(Array.isArray(data) ? data : []);
+    } finally {
+      setIsAreaSearching(false);
+    }
+  };
+  const handlePickArea = (result) => {
+    const nextLat = Number.parseFloat(result.lat);
+    const nextLng = Number.parseFloat(result.lon);
+    if (Number.isFinite(nextLat) && Number.isFinite(nextLng)) {
+      setLocation(nextLat, nextLng, result.display_name.split(",")[0]);
+      setAreaResults([]);
+      setAreaQuery("");
+    }
+  };
+  if (!hasLocation) {
+    return /* @__PURE__ */ jsx("div", {
+      className: "min-h-[calc(100vh-4rem)] bg-surface-100 px-4 py-10 sm:px-6 lg:px-8",
+      children: /* @__PURE__ */ jsxs("div", {
+        className: "mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.1fr_0.9fr]",
+        children: [
+          /* @__PURE__ */ jsxs("div", {
+            className: "card overflow-hidden bg-gradient-to-br from-surface-950 via-surface-900 to-surface-800 text-white",
+            children: [
+              /* @__PURE__ */ jsxs("div", {
+                className: "p-8 sm:p-10",
+                children: [
+                  /* @__PURE__ */ jsx("div", {
+                    className: "mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70",
+                    children: "Set your area"
+                  }),
+                  /* @__PURE__ */ jsxs("h1", {
+                    className: "font-display text-4xl font-black uppercase leading-[0.92] tracking-tight sm:text-6xl",
+                    children: [
+                      "Choose your location ",
+                      /* @__PURE__ */ jsx("br", {}),
+                      "before browsing deals"
+                    ]
+                  }),
+                  /* @__PURE__ */ jsx("p", {
+                    className: "mt-5 max-w-2xl text-sm leading-6 text-white/75 sm:text-base",
+                    children: "We will only show bundles within your selected area. Use your current location, enter a pincode, or search the exact area where you want to collect."
+                  }),
+                  /* @__PURE__ */ jsxs("div", {
+                    className: "mt-8 grid gap-3 sm:grid-cols-3",
+                    children: [
+                      /* @__PURE__ */ jsx("div", {
+                        className: "rounded-3xl border border-white/10 bg-white/5 p-4",
+                        children: /* @__PURE__ */ jsxs("div", {
+                          className: "text-sm",
+                          children: [
+                            /* @__PURE__ */ jsx("div", { className: "text-white/50", children: "Customer feed" }),
+                            /* @__PURE__ */ jsx("div", { className: "mt-2 font-semibold", children: "Nearby bundles only" })
+                          ]
+                        })
+                      }),
+                      /* @__PURE__ */ jsx("div", {
+                        className: "rounded-3xl border border-white/10 bg-white/5 p-4",
+                        children: /* @__PURE__ */ jsxs("div", {
+                          className: "text-sm",
+                          children: [
+                            /* @__PURE__ */ jsx("div", { className: "text-white/50", children: "Token expiry" }),
+                            /* @__PURE__ */ jsx("div", { className: "mt-2 font-semibold", children: "30 minutes after booking" })
+                          ]
+                        })
+                      }),
+                      /* @__PURE__ */ jsx("div", {
+                        className: "rounded-3xl border border-white/10 bg-white/5 p-4",
+                        children: /* @__PURE__ */ jsxs("div", {
+                          className: "text-sm",
+                          children: [
+                            /* @__PURE__ */ jsx("div", { className: "text-white/50", children: "Merchant targeting" }),
+                            /* @__PURE__ */ jsx("div", { className: "mt-2 font-semibold", children: "Fixed store pin + 5 km radius" })
+                          ]
+                        })
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsxs("div", {
+            className: "card p-6 sm:p-8",
+            children: [
+              /* @__PURE__ */ jsxs("div", {
+                className: "mb-6",
+                children: [
+                  /* @__PURE__ */ jsx("div", {
+                    className: "text-xs font-semibold uppercase tracking-[0.2em] text-surface-400",
+                    children: "Pick your area"
+                  }),
+                  /* @__PURE__ */ jsx("h2", {
+                    className: "mt-2 text-2xl font-black uppercase tracking-tight text-surface-900",
+                    children: "Search by pincode or locality"
+                  }),
+                  /* @__PURE__ */ jsx("p", {
+                    className: "mt-2 text-sm leading-6 text-surface-500",
+                    children: "Enter a pincode, area name, or city. We will lock the feed to that location."
+                  })
+                ]
+              }),
+              /* @__PURE__ */ jsx("button", {
+                onClick: requestLocation,
+                className: "btn-primary w-full py-3.5",
+                children: "Use current location"
+              }),
+              /* @__PURE__ */ jsxs("div", {
+                className: "my-5 flex items-center gap-3",
+                children: [
+                  /* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-surface-200" }),
+                  /* @__PURE__ */ jsx("span", { className: "text-xs font-semibold uppercase tracking-[0.2em] text-surface-400", children: "or" }),
+                  /* @__PURE__ */ jsx("div", { className: "h-px flex-1 bg-surface-200" })
+                ]
+              }),
+              /* @__PURE__ */ jsx("form", {
+                onSubmit: handleAreaSearch,
+                className: "space-y-3",
+                children: /* @__PURE__ */ jsxs("div", {
+                  className: "relative",
+                  children: [
+                    /* @__PURE__ */ jsx(Search, { className: "absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" }),
+                    /* @__PURE__ */ jsx("input", {
+                      type: "text",
+                      value: areaQuery,
+                      onChange: (e) => setAreaQuery(e.target.value),
+                      placeholder: "Enter pincode or area",
+                      className: "input pl-10 pr-12 py-3 text-sm",
+                      autoComplete: "postal-code"
+                    }),
+                    isAreaSearching && /* @__PURE__ */ jsx("div", {
+                      className: "absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-surface-200 border-t-brand-500"
+                    })
+                  ]
+                })
+              }),
+              areaResults.length > 0 && /* @__PURE__ */ jsx("div", {
+                className: "mt-4 max-h-72 overflow-y-auto rounded-2xl border border-surface-200 bg-white",
+                children: areaResults.map((result, index) => /* @__PURE__ */ jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => handlePickArea(result),
+                    className: "block w-full border-b border-surface-100 px-4 py-3 text-left text-sm hover:bg-surface-50 last:border-0",
+                    children: result.display_name
+                  },
+                  `${result.place_id || index}`
+                ))
+              }),
+              /* @__PURE__ */ jsx("div", {
+                className: "mt-6 rounded-3xl border border-dashed border-surface-200 bg-surface-50 p-5",
+                children: /* @__PURE__ */ jsxs("div", {
+                  className: "flex items-start gap-3",
+                  children: [
+                    /* @__PURE__ */ jsx(MapPin, { className: "mt-0.5 w-5 h-5 text-brand-500" }),
+                    /* @__PURE__ */ jsxs("div", {
+                      children: [
+                        /* @__PURE__ */ jsx("div", { className: "text-sm font-semibold text-surface-900", children: "Why we ask this" }),
+                        /* @__PURE__ */ jsx("div", {
+                          className: "mt-1 text-sm leading-6 text-surface-500",
+                          children: "Your home feed, map, favorites, and notifications will use this exact area. We do not assume a city until you choose one."
+                        })
+                      ]
+                    })
+                  ]
+                })
+              })
+            ]
+          })
+        ]
+      })
+    });
+  }
   return /* @__PURE__ */ jsx("div", { className: "pb-24 pt-10 bg-surface-100 min-h-screen", children: /* @__PURE__ */ jsxs("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", children: [
     /* @__PURE__ */ jsxs("div", { className: "mb-10", children: [
       /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 text-xs font-medium text-surface-400 mb-4", children: [
