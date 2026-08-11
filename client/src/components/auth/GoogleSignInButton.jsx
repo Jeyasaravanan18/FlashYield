@@ -18,18 +18,25 @@ export function GoogleSignInButton({
   
   const onCredentialRef = useRef(onCredential);
   onCredentialRef.current = onCredential;
+  const [status, setStatus] = useState(clientId ? "loading" : "missing-config");
 
   useEffect(() => {
     globalCallback = onCredentialRef.current;
   }, [onCredential]);
 
-  const [loaded, setLoaded] = useState(false);
-
   useEffect(() => {
-    if (!clientId || disabled) return;
+    if (!clientId) {
+      setStatus("missing-config");
+      return;
+    }
+    if (disabled) return;
+    setStatus("loading");
 
     const renderBtn = () => {
-      if (!window.google?.accounts?.id || !containerRef.current) return;
+      if (!window.google?.accounts?.id || !containerRef.current) {
+        setStatus("error");
+        return;
+      }
       try {
         if (!googleInitialized) {
           window.google.accounts.id.initialize({
@@ -52,9 +59,10 @@ export function GoogleSignInButton({
           width: 320,
           shape: "rectangular"
         });
-        setLoaded(true);
+        setStatus("ready");
       } catch (e) {
         console.warn("[GSI] Init error", e);
+        setStatus("error");
       }
     };
 
@@ -82,12 +90,21 @@ export function GoogleSignInButton({
         googleScriptLoading = false;
         renderBtn();
       };
+      script.onerror = () => {
+        googleScriptLoading = false;
+        setStatus("error");
+      };
       document.head.appendChild(script);
     } else {
+      let attempts = 0;
       const interval = setInterval(() => {
+        attempts += 1;
         if (window.google?.accounts?.id) {
           clearInterval(interval);
           renderBtn();
+        } else if (attempts > 80) {
+          clearInterval(interval);
+          setStatus("error");
         }
       }, 100);
       return () => clearInterval(interval);
@@ -142,17 +159,22 @@ export function GoogleSignInButton({
         </>
       )}
 
-      {!clientId ? (
+      {status === "missing-config" ? (
         <p className="text-center text-xs text-surface-400">
           Google sign-in is unavailable until <code>VITE_GOOGLE_CLIENT_ID</code> is configured.
         </p>
       ) : (
         <div className="min-h-10 flex flex-col items-center justify-center">
           <div ref={containerRef} className={disabled ? "pointer-events-none opacity-50" : ""} />
-          {!loaded && (
+          {status === "loading" && (
             <div className="flex h-10 w-full max-w-[320px] items-center justify-center gap-2 rounded-lg border border-surface-200 bg-white text-sm text-surface-500">
               <Globe2 className="w-4 h-4" />
               Loading Google...
+            </div>
+          )}
+          {status === "error" && (
+            <div className="w-full max-w-[320px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-700">
+              Google sign-in is blocked or unavailable in this browser. Use email sign-in, or allow accounts.google.com.
             </div>
           )}
         </div>

@@ -13,12 +13,14 @@ function VerifyEmailPage() {
   const [email, setEmail] = useState(initialEmail);
   const [role, setRole] = useState(location.state?.role || "customer");
   const [code, setCode] = useState("");
-  const [message, setMessage] = useState(initialEmail ? "We sent a code to your inbox. Enter it below to activate your account." : "");
-  const [error, setError] = useState("");
+  const initialMessage = location.state?.message || (initialEmail ? "We sent a code to your inbox. Enter it below to activate your account." : "");
+  const initialDeliveryFailed = location.state?.emailSent === false;
+  const [message, setMessage] = useState(initialDeliveryFailed ? "" : initialMessage);
+  const [error, setError] = useState(initialDeliveryFailed ? initialMessage : "");
 
   const verifyEmail = useVerifyEmail();
   const resendVerification = useResendVerification();
-  const canSubmit = useMemo(() => email && code.length >= 4, [email, code]);
+  const canSubmit = useMemo(() => email && code.length === 6, [email, code]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -46,6 +48,11 @@ function VerifyEmailPage() {
       {
         onSuccess: (data) => {
           setError("");
+          if (data.emailSent === false) {
+            setMessage("");
+            setError(data.message || "Verification email could not be sent. Check SMTP settings.");
+            return;
+          }
           setMessage(data.message || "Verification code resent.");
         },
         onError: (err) => setError(getErrorMessage(err))

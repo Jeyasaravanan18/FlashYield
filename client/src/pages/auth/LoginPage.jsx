@@ -59,6 +59,11 @@ function LoginPage() {
       {
         onSuccess: (data) => {
           setError("");
+          if (data.emailSent === false) {
+            setNotice("");
+            setError(data.message || "Verification email could not be sent. Check SMTP settings.");
+            return;
+          }
           setNotice(data.message || "Verification code sent.");
         },
         onError: (err) => setError(getErrorMessage(err))

@@ -20,7 +20,14 @@ function ForgotPasswordPage() {
     forgotPassword.mutate(
       { email, role },
       {
-        onSuccess: (data) => setMessage(data.message || "Reset code sent."),
+        onSuccess: (data) => {
+          if (data.emailSent === false) {
+            setMessage("");
+            setError(data.message || "Reset email could not be sent. Check SMTP settings.");
+            return;
+          }
+          setMessage(data.message || "Reset code sent.");
+        },
         onError: (err) => setError(getErrorMessage(err))
       }
     );

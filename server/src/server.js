@@ -8,11 +8,23 @@ import { startCronJobs, stopCronJobs } from "./jobs.js";
 import { logger } from "./utils/logger.js";
 import { User } from "./models/User.js";
 const server = http.createServer(app);
+async function ensureUserIndexes() {
+  const indexes = await User.collection.indexes();
+  const legacyUniqueIndexes = indexes.filter((index) => {
+    const keys = Object.keys(index.key || {});
+    return index.unique === true && keys.length === 1 && (keys[0] === "email" || keys[0] === "googleSubject");
+  });
+  for (const index of legacyUniqueIndexes) {
+    await User.collection.dropIndex(index.name);
+    logger.info({ index: index.name }, "Dropped legacy unique user index");
+  }
+  await User.syncIndexes();
+}
 async function bootstrap() {
   try {
     await connectDatabase();
     try {
-      await User.syncIndexes();
+      await ensureUserIndexes();
       logger.info("✅ User indexes synced");
     } catch (syncErr) {
       logger.warn({ err: syncErr }, "User index sync skipped or partially applied");

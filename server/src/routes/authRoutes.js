@@ -33,7 +33,8 @@ router.post(
         user: result.user,
         accessToken: result.tokens?.accessToken || null,
         requiresVerification: true,
-        message: "Account created. Check your email for a verification code."
+        emailSent: !!result.otpDelivery?.sent,
+        message: result.message || "Account created. Check your email for a verification code."
       });
     } catch (err) {
       next(err);

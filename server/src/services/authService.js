@@ -72,14 +72,22 @@ function buildOtpMessage({ purpose, code, minutes }) {
   ].join("\n");
 }
 
-function getMailTransport() {
+function isSmtpConfigured() {
   if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS || !env.SMTP_FROM) {
-    return null;
+    return false;
   }
+  return true;
+}
+
+function getMailTransport() {
+  if (!isSmtpConfigured()) return null;
   return nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT || 587,
     secure: env.SMTP_SECURE ?? false,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS
@@ -91,8 +99,11 @@ async function sendOtpEmail(to, purpose, code) {
   const transporter = getMailTransport();
   const message = buildOtpMessage({ purpose, code, minutes: OTP_TTL_MINUTES });
   if (!transporter) {
-    logger.warn({ to, purpose, code }, "SMTP not configured; OTP logged for local development");
-    return;
+    logger.warn({ to, purpose }, "SMTP not configured; OTP cannot be emailed");
+    if (env.NODE_ENV !== "production") {
+      logger.warn({ to, purpose, code }, "OTP logged for local development");
+    }
+    return { sent: false, reason: "not_configured" };
   }
   await transporter.sendMail({
     from: env.SMTP_FROM,
@@ -100,9 +111,19 @@ async function sendOtpEmail(to, purpose, code) {
     subject: purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account",
     text: message
   });
+  return { sent: true };
 }
 
-async function issueOtp(user, purpose) {
+function queueOtpEmail(to, purpose, code) {
+  setImmediate(() => {
+    sendOtpEmail(to, purpose, code)
+      .then(() => logger.info({ to, purpose }, "OTP email queued successfully"))
+      .catch((err) => logger.error({ err, to, purpose }, "OTP email delivery failed"));
+  });
+}
+
+async function issueOtp(user, purpose, options = {}) {
+  const waitForDelivery = options.waitForDelivery ?? env.NODE_ENV === "production";
   const code = generateOtp();
   const codeHash = await hashValue(code);
   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
@@ -114,8 +135,26 @@ async function issueOtp(user, purpose) {
     user.passwordResetCodeExpiresAt = expiresAt;
   }
   await user.save();
-  await sendOtpEmail(user.email, purpose === "verify" ? "verify" : "reset", code);
-  return { expiresAt };
+  const deliveryPurpose = purpose === "verify" ? "verify" : "reset";
+  if (waitForDelivery) {
+    try {
+      const delivery = await sendOtpEmail(user.email, deliveryPurpose, code);
+      return { expiresAt, delivery };
+    } catch (err) {
+      logger.error({ err, to: user.email, purpose: deliveryPurpose }, "OTP email delivery failed");
+      return { expiresAt, delivery: { sent: false, reason: "send_failed" } };
+    }
+  }
+  queueOtpEmail(user.email, deliveryPurpose, code);
+  return { expiresAt, delivery: { sent: true, queued: true } };
+}
+
+function otpDeliveryMessage(delivery, fallbackMessage) {
+  if (delivery?.sent) return fallbackMessage;
+  if (delivery?.reason === "not_configured") {
+    return "Email delivery is not configured on the server. Add SMTP settings and redeploy, then resend the code.";
+  }
+  return "The account was saved, but the verification email could not be delivered. Check SMTP settings and resend the code.";
 }
 
 function assertOtpValid(user, purpose, code) {
@@ -144,7 +183,10 @@ async function createMerchantProfileForUser(user, profileData) {
   }
   const existing = await MerchantProfile.findOne({ userId: user._id });
   if (existing) return existing;
-  let geocoded = await geocodingService.geocodeAddress(profileData.address);
+  let geocoded = await Promise.race([
+    geocodingService.geocodeAddress(profileData.address),
+    new Promise((resolve) => setTimeout(() => resolve(null), 1200))
+  ]);
   if (!geocoded) {
     geocoded = { lat: 12.9716, lng: 77.5946 };
   }
@@ -166,12 +208,9 @@ async function createMerchantProfileForUser(user, profileData) {
 const authService = {
   async register(email, password, role = "customer", ipAddress, merchantProfile = null) {
     const normalizedEmail = normalizeEmail(email);
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await User.findOne({ email: normalizedEmail, role });
     if (existingUser) {
-      if (existingUser.role !== role) {
-        throw new ConflictError(`Already a ${existingUser.role} account`);
-      }
-      throw new ConflictError("An account with this email already exists");
+      throw new ConflictError(`A ${role} account with this email already exists`);
     }
     if (role === "admin") {
       throw new BadRequestError("Cannot register as admin");
@@ -185,7 +224,7 @@ const authService = {
     });
 
     await createMerchantProfileForUser(user, merchantProfile);
-    await issueOtp(user, "verify");
+    const { delivery } = await issueOtp(user, "verify");
 
     await auditService.log({
       action: "user_register",
@@ -205,13 +244,15 @@ const authService = {
         role: user.role,
         emailVerified: user.emailVerified,
         verificationRequired: true
-      }
+      },
+      otpDelivery: delivery,
+      message: otpDeliveryMessage(delivery, "Account created. Check your email for a verification code.")
     };
   },
 
-  async login(email, password, ipAddress) {
+  async login(email, password, ipAddress, role = "customer") {
     const normalizedEmail = normalizeEmail(email);
-    const user = await User.findOne({ email: normalizedEmail }).select("+passwordHash");
+    const user = await User.findOne({ email: normalizedEmail, role }).select("+passwordHash");
     if (!user) {
       throw new UnauthorizedError("Invalid email or password");
     }
@@ -220,8 +261,8 @@ const authService = {
       throw new UnauthorizedError("Invalid email or password");
     }
     if (!user.emailVerified) {
-      await issueOtp(user, "verify");
-      throw new BadRequestError("Please verify your email before signing in. A new code has been sent.");
+      const { delivery } = await issueOtp(user, "verify");
+      throw new BadRequestError(otpDeliveryMessage(delivery, "Please verify your email before signing in. A new code has been sent."));
     }
 
     const accessToken = generateAccessToken(user);
@@ -266,9 +307,10 @@ const authService = {
       throw new UnauthorizedError("Google sign-in token is invalid for this application");
     }
     const email = normalizeEmail(token.email);
-    let user = await User.findOne({ googleSubject: token.sub }).select("+passwordHash");
+    const roleToUse = requestedRole || "customer";
+    let user = await User.findOne({ googleSubject: token.sub, role: roleToUse }).select("+passwordHash");
     if (!user) {
-      user = await User.findOne({ email }).select("+passwordHash");
+      user = await User.findOne({ email, role: roleToUse }).select("+passwordHash");
       if (!user) {
         if (isLogin) {
           throw new UnauthorizedError("Account not found. Please register to create a new account.");
@@ -276,31 +318,23 @@ const authService = {
         if (requestedRole === "merchant" && !merchantProfile) {
           throw new BadRequestError("Merchant details are required to create a new merchant account.");
         }
-        // Create new user (defaults to requestedRole or "customer")
-        const roleToCreate = requestedRole || "customer";
         user = await User.create({
           email,
           passwordHash: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_COST_FACTOR),
           googleSubject: token.sub,
-          role: roleToCreate,
+          role: roleToUse,
           emailVerified: true
         });
         await createMerchantProfileForUser(user, merchantProfile);
       } else {
-        // User exists with email
-        if (!isLogin && requestedRole && user.role !== requestedRole) {
-          throw new ConflictError(`Already a ${user.role} account`);
-        }
+        // User exists with email for the selected role
         if (!user.googleSubject) {
           user.googleSubject = token.sub;
           user.emailVerified = true;
         }
       }
     } else {
-      // User exists with googleSubject
-      if (!isLogin && requestedRole && user.role !== requestedRole) {
-        throw new ConflictError(`Already a ${user.role} account`);
-      }
+      // User exists with googleSubject for the selected role
     }
     await createMerchantProfileForUser(user, merchantProfile);
     const result = createAuthResult(user);
@@ -372,8 +406,8 @@ const authService = {
     if (user.emailVerified) {
       return { message: "Email is already verified." };
     }
-    const { expiresAt } = await issueOtp(user, "verify");
-    return { message: "Verification code sent.", expiresAt };
+    const { expiresAt, delivery } = await issueOtp(user, "verify");
+    return { message: otpDeliveryMessage(delivery, "Verification code sent."), expiresAt, emailSent: !!delivery?.sent };
   },
 
   async verifyEmail(email, code, role = "customer") {
@@ -394,8 +428,8 @@ const authService = {
     if (!user) {
       return { message: "If that email exists, a reset code has been sent." };
     }
-    const { expiresAt } = await issueOtp(user, "reset");
-    return { message: "Password reset code sent.", expiresAt };
+    const { expiresAt, delivery } = await issueOtp(user, "reset");
+    return { message: otpDeliveryMessage(delivery, "Password reset code sent."), expiresAt, emailSent: !!delivery?.sent };
   },
 
   async resetPassword(email, code, newPassword, role = "customer") {
@@ -419,8 +453,8 @@ const authService = {
     if (user.emailVerified) {
       return { message: "Email is already verified." };
     }
-    await issueOtp(user, "verify");
-    return { message: "Verification code resent." };
+    const { delivery } = await issueOtp(user, "verify");
+    return { message: otpDeliveryMessage(delivery, "Verification code resent."), emailSent: !!delivery?.sent };
   }
 };
 

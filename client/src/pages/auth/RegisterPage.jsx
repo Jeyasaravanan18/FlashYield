@@ -7,6 +7,9 @@ import { GoogleSignInButton } from "../../components/auth/GoogleSignInButton";
 import { getErrorMessage } from "../../lib/api";
 import { useGoogleLogin, useRegister } from "../../api/hooks";
 
+const strongPasswordMessage = "Use 8+ characters with uppercase, lowercase, and a number.";
+const isStrongPassword = (value) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
+
 function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,11 +29,15 @@ function RegisterPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
+    if (!isStrongPassword(password)) {
+      setError(strongPasswordMessage);
+      return;
+    }
     const merchantProfile = role === "merchant" ? merchantDetails : undefined;
     register.mutate(
       { email, password, role, merchantProfile },
       {
-        onSuccess: () => navigate("/verify-email", { state: { email, role } }),
+        onSuccess: (data) => navigate("/verify-email", { state: { email, role, message: data.message, emailSent: data.emailSent } }),
         onError: (err) => setError(getErrorMessage(err))
       }
     );
@@ -150,7 +157,7 @@ function RegisterPage() {
                 }),
                 jsx("p", {
                   className: "mt-2 text-xs text-surface-400",
-                  children: "Use 8+ characters with uppercase, lowercase, and a number."
+                  children: strongPasswordMessage
                 })
               ]
             }),

@@ -6,6 +6,9 @@ import { getErrorMessage } from "../../lib/api";
 import { Loader2, Leaf, X, Store, ShoppingBag } from "lucide-react";
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 
+const strongPasswordMessage = "Use 8+ characters with uppercase, lowercase, and a number.";
+const isStrongPassword = (value) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
+
 export function AuthModal() {
   const { isAuthModalOpen, closeAuthModal } = useAuthStore();
   const [mode, setMode] = useState("login");
@@ -33,7 +36,7 @@ export function AuthModal() {
 
     if (mode === "login") {
       login.mutate(
-        { email, password, role: "customer" },
+        { email, password, role },
         {
           onSuccess: (data) => {
             closeAuthModal();
@@ -45,13 +48,17 @@ export function AuthModal() {
         }
       );
     } else {
+      if (!isStrongPassword(password)) {
+        setError(strongPasswordMessage);
+        return;
+      }
       const merchantProfile = role === "merchant" ? merchantDetails : undefined;
       register.mutate(
         { email, password, role, merchantProfile },
         {
-          onSuccess: () => {
+          onSuccess: (data) => {
             closeAuthModal();
-            navigate("/verify-email", { state: { email, role } });
+            navigate("/verify-email", { state: { email, role, message: data.message, emailSent: data.emailSent } });
           },
           onError: (err) => setError(getErrorMessage(err))
         }
@@ -92,7 +99,7 @@ export function AuthModal() {
     googleLogin.mutate(
       {
         credential,
-        role: mode === "register" ? role : "customer",
+        role,
         merchantProfile: mode === "register" && role === "merchant" ? merchantDetails : undefined,
         isLogin: mode === "login"
       },
@@ -169,37 +176,40 @@ export function AuthModal() {
             />
           </div>
 
-          {mode === "register" && (
-            <div>
-              <label className="label">Account type</label>
-              <div className="grid grid-cols-2 gap-3 mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setRole("customer")}
-                  className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
-                    role === "customer"
-                      ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
-                      : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
-                  }`}
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  Buy food
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole("merchant")}
-                  className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
-                    role === "merchant"
-                      ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
-                      : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
-                  }`}
-                >
-                  <Store className="w-4 h-4" />
-                  Sell food
-                </button>
-              </div>
+          <div>
+            <label className="label">Account type</label>
+            <div className="grid grid-cols-2 gap-3 mt-1.5">
+              <button
+                type="button"
+                onClick={() => setRole("customer")}
+                className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+                  role === "customer"
+                    ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
+                    : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Customer
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("merchant")}
+                className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+                  role === "merchant"
+                    ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
+                    : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
+                }`}
+              >
+                <Store className="w-4 h-4" />
+                Merchant
+              </button>
             </div>
-          )}
+            {mode === "register" && (
+              <p className="mt-2 text-xs text-surface-400">
+                {role === "merchant" ? "Seller accounts need store details before activation." : "Customer accounts can claim nearby rescue bundles."}
+              </p>
+            )}
+          </div>
 
           {mode === "register" && role === "merchant" && (
             <div className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4 space-y-3">
@@ -303,8 +313,8 @@ export function AuthModal() {
           <GoogleSignInButton
             onCredential={handleGoogleLogin}
             disabled={isPending}
-            selectedRole={mode === "register" ? role : "customer"}
-            onRoleChange={mode === "register" ? setRole : undefined}
+            selectedRole={role}
+            onRoleChange={setRole}
             showRoleSelector={false}
           />
         </>

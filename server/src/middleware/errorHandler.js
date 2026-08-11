@@ -35,10 +35,12 @@ function globalErrorHandler(err, req, res, _next) {
   }
   if (err.code === 11e3) {
     logger.warn({ ...logContext, err }, "Duplicate key error");
+    const keyPattern = err.keyPattern || {};
+    const isAccountEmail = Object.prototype.hasOwnProperty.call(keyPattern, "email");
     res.status(409).json({
       error: {
         code: "DUPLICATE_KEY",
-        message: "A resource with this value already exists"
+        message: isAccountEmail ? "An account with this email already exists for this role" : "A resource with this value already exists"
       }
     });
     return;
