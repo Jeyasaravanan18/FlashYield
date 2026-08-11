@@ -99,6 +99,10 @@ function isSmtpConfigured() {
   return true;
 }
 
+function isResendConfigured() {
+  return !!env.RESEND_API_KEY && !!(env.RESEND_FROM || env.SMTP_FROM);
+}
+
 function redactMailError(err) {
   return {
     code: err?.code,
@@ -153,13 +157,38 @@ async function getMailTransport(overrides = {}) {
 
 async function sendOtpEmail(to, purpose, code) {
   const message = buildOtpMessage({ purpose, code, minutes: OTP_TTL_MINUTES });
-  if (!isSmtpConfigured()) {
-    logger.warn({ to, purpose }, "SMTP not configured; OTP cannot be emailed");
+  const subject = purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account";
+  if (!isResendConfigured() && !isSmtpConfigured()) {
+    logger.warn({ to, purpose }, "Email delivery not configured; OTP cannot be emailed");
     if (env.NODE_ENV !== "production") {
       logger.warn({ to, purpose, code }, "OTP logged for local development");
     }
     return { sent: false, reason: "not_configured" };
   }
+  if (isResendConfigured()) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: env.RESEND_FROM || env.SMTP_FROM,
+        to,
+        subject,
+        text: message
+      })
+    });
+    if (response.ok) {
+      return { sent: true, provider: "resend" };
+    }
+    const errorText = await response.text().catch(() => "");
+    logger.warn({ to, purpose, status: response.status, errorText: errorText.slice(0, 500) }, "Resend OTP email delivery failed");
+    if (!isSmtpConfigured()) {
+      return { sent: false, reason: "send_failed", provider: "resend" };
+    }
+  }
+
   const configuredPort = env.SMTP_PORT || 587;
   const configuredSecure = env.SMTP_SECURE ?? configuredPort === 465;
   const attempts = [
@@ -174,10 +203,10 @@ async function sendOtpEmail(to, purpose, code) {
       await transporter.sendMail({
         from: env.SMTP_FROM,
         to,
-        subject: purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account",
+        subject,
         text: message
       });
-      return { sent: true, port: attempt.port };
+      return { sent: true, provider: "smtp", port: attempt.port };
     } catch (err) {
       lastError = err;
       logger.warn({ err: redactMailError(err), to, purpose, port: attempt.port }, "OTP email attempt failed");
