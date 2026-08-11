@@ -4,9 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./store/authStore";
 import { useSocket } from "./hooks/useSocket";
 import { AppLayout } from "./components/layout/AppLayout";
-import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
-import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
-import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { BrowsePage } from "./pages/customer/BrowsePage";
 import { ListingDetailPage } from "./pages/customer/ListingDetailPage";
 import { MyClaimsPage } from "./pages/customer/MyClaimsPage";
@@ -67,9 +64,6 @@ function AppRoutes() {
   return /* @__PURE__ */ jsxs(Routes, { children: [
     /* @__PURE__ */ jsx(Route, { path: "/login", element: /* @__PURE__ */ jsx(Navigate, { to: "/", replace: true }) }),
     /* @__PURE__ */ jsx(Route, { path: "/register", element: /* @__PURE__ */ jsx(Navigate, { to: "/", replace: true }) }),
-    /* @__PURE__ */ jsx(Route, { path: "/verify-email", element: /* @__PURE__ */ jsx(VerifyEmailPage, {}) }),
-    /* @__PURE__ */ jsx(Route, { path: "/forgot-password", element: /* @__PURE__ */ jsx(ForgotPasswordPage, {}) }),
-    /* @__PURE__ */ jsx(Route, { path: "/reset-password", element: /* @__PURE__ */ jsx(ResetPasswordPage, {}) }),
     /* @__PURE__ */ jsxs(Route, { path: "/", element: /* @__PURE__ */ jsx(AppLayout, {}), children: [
       /* @__PURE__ */ jsx(Route, { index: true, element: /* @__PURE__ */ jsx(HomeRoute, {}) }),
       /* @__PURE__ */ jsx(Route, { path: "listings/:id", element: /* @__PURE__ */ jsx(ListingDetailPage, {}) }),

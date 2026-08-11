@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
-import { useGoogleLogin, useLogin, useRegister, useResendVerification } from "../../api/hooks";
-import { api, getErrorMessage } from "../../lib/api";
-import { Loader2, Leaf, X, Store, ShoppingBag } from "lucide-react";
+import { 
+  useGoogleLogin, 
+  useLogin, 
+  useRegister, 
+  useResendVerification,
+  useVerifyEmail,
+  useForgotPassword,
+  useResetPassword
+} from "../../api/hooks";
+import { getErrorMessage } from "../../lib/api";
+import { Loader2, X, Store, ShoppingBag, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 
 const strongPasswordMessage = "Use 8+ characters with uppercase, lowercase, and a number.";
@@ -11,9 +19,11 @@ const isStrongPassword = (value) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test
 
 export function AuthModal() {
   const { isAuthModalOpen, closeAuthModal } = useAuthStore();
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState("login"); // login | register | verify-email | forgot-password | reset-password
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [code, setCode] = useState("");
   const [role, setRole] = useState("customer");
   const [merchantDetails, setMerchantDetails] = useState({
     businessName: "",
@@ -22,19 +32,45 @@ export function AuthModal() {
     description: ""
   });
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [showResend, setShowResend] = useState(false);
 
   const login = useLogin();
   const register = useRegister();
   const googleLogin = useGoogleLogin();
   const resendVerification = useResendVerification();
+  const verifyEmail = useVerifyEmail();
+  const forgotPassword = useForgotPassword();
+  const resetPassword = useResetPassword();
   const navigate = useNavigate();
 
   if (!isAuthModalOpen) return null;
 
+  const handleDismiss = () => {
+    closeAuthModal();
+    setTimeout(() => {
+      setMode("login");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      setCode("");
+      setRole("customer");
+      setMerchantDetails({
+        businessName: "",
+        phone: "",
+        address: "",
+        description: ""
+      });
+      setError("");
+      setMessage("");
+      setShowResend(false);
+    }, 200);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setMessage("");
     setShowResend(false);
 
     if (mode === "login") {
@@ -48,15 +84,15 @@ export function AuthModal() {
             else if (userRole === "admin") navigate("/admin");
           },
           onError: (err) => {
-            const message = getErrorMessage(err);
-            setError(message);
-            if (message.toLowerCase().includes("verify your email") || message.toLowerCase().includes("verification")) {
+            const msg = getErrorMessage(err);
+            setError(msg);
+            if (msg.toLowerCase().includes("verify your email") || msg.toLowerCase().includes("verification")) {
               setShowResend(true);
             }
           }
         }
       );
-    } else {
+    } else if (mode === "register") {
       if (!isStrongPassword(password)) {
         setError(strongPasswordMessage);
         return;
@@ -66,8 +102,57 @@ export function AuthModal() {
         { email, password, role, merchantProfile },
         {
           onSuccess: (data) => {
-            closeAuthModal();
-            navigate("/verify-email", { state: { email, role, message: data.message, emailSent: data.emailSent } });
+            setMessage(data.message || "Account created. Please verify your email.");
+            setMode("verify-email");
+            if (data.emailSent === false) {
+              setError(data.message || "Verification email could not be sent. Check SMTP settings.");
+              setMessage("");
+            }
+          },
+          onError: (err) => setError(getErrorMessage(err))
+        }
+      );
+    } else if (mode === "verify-email") {
+      verifyEmail.mutate(
+        { email, code, role },
+        {
+          onSuccess: () => {
+            setMessage("Email verified. You can now sign in.");
+            setCode("");
+            setMode("login");
+          },
+          onError: (err) => setError(getErrorMessage(err))
+        }
+      );
+    } else if (mode === "forgot-password") {
+      forgotPassword.mutate(
+        { email, role },
+        {
+          onSuccess: (data) => {
+            if (data.emailSent === false) {
+              setError(data.message || "Reset email could not be sent.");
+              return;
+            }
+            setMessage(data.message || "Reset code sent.");
+            setMode("reset-password");
+          },
+          onError: (err) => setError(getErrorMessage(err))
+        }
+      );
+    } else if (mode === "reset-password") {
+      if (password !== confirmPassword) {
+        setError("Passwords do not match.");
+        return;
+      }
+      resetPassword.mutate(
+        { email, code, password, role },
+        {
+          onSuccess: (data) => {
+            setMessage(data.message || "Password updated successfully.");
+            setCode("");
+            setPassword("");
+            setConfirmPassword("");
+            setMode("login");
           },
           onError: (err) => setError(getErrorMessage(err))
         }
@@ -75,28 +160,18 @@ export function AuthModal() {
     }
   };
 
-  const handleDismiss = () => {
-    closeAuthModal();
-    setTimeout(() => {
-      setMode("login");
-      setEmail("");
-      setPassword("");
-      setRole("customer");
-      setMerchantDetails({
-        businessName: "",
-        phone: "",
-        address: "",
-        description: ""
-      });
-      setError("");
-      setShowResend(false);
-    }, 200);
-  };
-
-  const isPending = login.isPending || register.isPending || googleLogin.isPending;
+  const isPending = 
+    login.isPending || 
+    register.isPending || 
+    googleLogin.isPending || 
+    verifyEmail.isPending || 
+    forgotPassword.isPending || 
+    resetPassword.isPending ||
+    resendVerification.isPending;
 
   const handleGoogleLogin = (credential) => {
     setError("");
+    setMessage("");
     setShowResend(false);
 
     if (
@@ -126,6 +201,73 @@ export function AuthModal() {
     );
   };
 
+  const renderHeader = () => {
+    let title = "Welcome back";
+    let sub = "Sign in to claim local surplus bundles.";
+
+    if (mode === "register") {
+      title = "Create an account";
+      sub = "Rescue fresh food. Sell surplus faster.";
+    } else if (mode === "verify-email") {
+      title = "Verify your email";
+      sub = "Enter the one-time code sent to your inbox.";
+    } else if (mode === "forgot-password") {
+      title = "Account recovery";
+      sub = "We'll send a code to reset your password.";
+    } else if (mode === "reset-password") {
+      title = "Reset password";
+      sub = "Use the code to secure your account.";
+    }
+
+    return (
+      <div className="flex flex-col items-center mb-8">
+        <div className="mb-4 flex items-center justify-center">
+          <span className="text-3xl font-display font-bold bg-gradient-to-r from-brand-500 to-brand-400 bg-clip-text text-transparent tracking-tight uppercase">
+            FlashYield
+          </span>
+        </div>
+        <h2 className="text-2xl font-normal tracking-tight text-surface-900 sm:text-3xl text-center">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm text-surface-500 text-center max-w-xs">
+          {sub}
+        </p>
+      </div>
+    );
+  };
+
+  const renderAccountTypeSelector = () => (
+    <div>
+      <label className="label">Account type</label>
+      <div className="grid grid-cols-2 gap-3 mt-1.5">
+        <button
+          type="button"
+          onClick={() => setRole("customer")}
+          className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+            role === "customer"
+              ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
+              : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4" />
+          Customer
+        </button>
+        <button
+          type="button"
+          onClick={() => setRole("merchant")}
+          className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+            role === "merchant"
+              ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
+              : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
+          }`}
+        >
+          <Store className="w-4 h-4" />
+          Merchant
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleDismiss} />
@@ -138,23 +280,14 @@ export function AuthModal() {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex flex-col items-center mb-8">
-          <div className="mb-4 flex items-center justify-center">
-            <span className="text-3xl font-display font-bold bg-gradient-to-r from-brand-500 to-brand-400 bg-clip-text text-transparent tracking-tight uppercase">
-              FlashYield
-            </span>
-          </div>
-          <h2 className="text-2xl font-normal tracking-tight text-surface-900 sm:text-3xl text-center">
-            {mode === "login" ? "Welcome back" : "Create an account"}
-          </h2>
-          <p className="mt-2 text-sm text-surface-500 text-center max-w-xs">
-            {mode === "login" 
-              ? "Sign in to claim local surplus bundles." 
-              : "Rescue fresh food. Sell surplus faster."}
-          </p>
-        </div>
+        {renderHeader()}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {message && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700 font-medium">
+              {message}
+            </div>
+          )}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600 font-medium">
               {error}
@@ -175,6 +308,9 @@ export function AuthModal() {
                         setError("");
                         if (data.emailSent === false) {
                           setError(data.message || "Could not send verification email.");
+                        } else {
+                          setMessage(data.message || "Verification email sent.");
+                          setMode("verify-email");
                         }
                       },
                       onError: (err) => setError(getErrorMessage(err))
@@ -188,6 +324,10 @@ export function AuthModal() {
             </div>
           )}
 
+          {/* Role selector shown for register, forgot-password, reset-password, verify-email if needed */}
+          {(mode === "register" || mode === "verify-email" || mode === "forgot-password" || mode === "reset-password") && renderAccountTypeSelector()}
+
+          {/* Email input shown everywhere except some specific states if desired, but good to have everywhere */}
           <div>
             <label htmlFor="auth-email" className="label">
               Email
@@ -203,58 +343,65 @@ export function AuthModal() {
             />
           </div>
 
-          <div>
-            <label htmlFor="auth-password" className="label">
-              Password
-            </label>
-            <input
-              id="auth-password"
-              type="password"
-              className="input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === "login" ? "Enter your password" : "Use 8+ chars with A-z and number"}
-              required
-              minLength={8}
-            />
-          </div>
-
-          {/* Only show role selector in register mode */}
-          {mode === "register" && (
+          {/* Code input for verification or password reset */}
+          {(mode === "verify-email" || mode === "reset-password") && (
             <div>
-              <label className="label">Account type</label>
-              <div className="grid grid-cols-2 gap-3 mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setRole("customer")}
-                  className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
-                    role === "customer"
-                      ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
-                      : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
-                  }`}
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  Customer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole("merchant")}
-                  className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
-                    role === "merchant"
-                      ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
-                      : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
-                  }`}
-                >
-                  <Store className="w-4 h-4" />
-                  Merchant
-                </button>
-              </div>
-              <p className="mt-2 text-xs text-surface-400">
-                {role === "merchant" ? "Seller accounts need store details before activation." : "Customer accounts can claim nearby rescue bundles."}
-              </p>
+              <label htmlFor="auth-code" className="label">
+                6-digit code
+              </label>
+              <input
+                id="auth-code"
+                type="text"
+                className="input tracking-[0.5em] text-center text-lg font-semibold"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                inputMode="numeric"
+                maxLength={6}
+                required
+              />
             </div>
           )}
 
+          {/* Password input for login, register, reset-password */}
+          {(mode === "login" || mode === "register" || mode === "reset-password") && (
+            <div>
+              <label htmlFor="auth-password" className="label">
+                {mode === "reset-password" ? "New Password" : "Password"}
+              </label>
+              <input
+                id="auth-password"
+                type="password"
+                className="input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === "login" ? "Enter your password" : "Use 8+ chars with A-z and number"}
+                required
+                minLength={8}
+              />
+            </div>
+          )}
+
+          {/* Confirm Password input for reset-password */}
+          {mode === "reset-password" && (
+            <div>
+              <label htmlFor="auth-confirm-password" className="label">
+                Confirm Password
+              </label>
+              <input
+                id="auth-confirm-password"
+                type="password"
+                className="input"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat new password"
+                required
+                minLength={8}
+              />
+            </div>
+          )}
+
+          {/* Merchant specific fields during registration */}
           {mode === "register" && role === "merchant" && (
             <div className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4 space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-brand-600">
@@ -329,6 +476,7 @@ export function AuthModal() {
             </div>
           )}
 
+          {/* Submit Button */}
           <button
             type="submit"
             className="btn-primary w-full py-3.5 mt-2"
@@ -337,46 +485,134 @@ export function AuthModal() {
             {isPending ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {mode === "login" ? "Signing in..." : "Creating account..."}
+                Processing...
               </span>
             ) : mode === "login" ? (
               "Sign In"
-            ) : (
+            ) : mode === "register" ? (
               "Create Account"
+            ) : mode === "verify-email" ? (
+              <span className="flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> Verify Email
+              </span>
+            ) : mode === "forgot-password" ? (
+              <span className="flex items-center justify-center gap-2">
+                <ShieldAlert className="w-4 h-4" /> Send Reset Code
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> Reset Password
+              </span>
             )}
           </button>
         </form>
 
-        <>
-          <div className="my-5 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-surface-400">
-            <span className="h-px flex-1 bg-surface-200" />
-            or
-            <span className="h-px flex-1 bg-surface-200" />
+        {mode === "login" && (
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("forgot-password");
+                setError("");
+                setMessage("");
+              }}
+              className="text-sm font-semibold text-brand-500 hover:text-brand-600 transition-colors"
+            >
+              Forgot your password?
+            </button>
           </div>
+        )}
 
-          <GoogleSignInButton
-            onCredential={handleGoogleLogin}
-            disabled={isPending}
-            selectedRole={mode === "register" ? role : "customer"}
-            onRoleChange={setRole}
-            showRoleSelector={false}
-          />
-        </>
+        {mode === "login" && (
+          <>
+            <div className="my-5 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-surface-400">
+              <span className="h-px flex-1 bg-surface-200" />
+              or
+              <span className="h-px flex-1 bg-surface-200" />
+            </div>
 
-        <p className="text-center mt-5 text-sm text-surface-400">
-          {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === "login" ? "register" : "login");
-              setError("");
-              setShowResend(false);
-            }}
-            className="font-semibold text-brand-500 hover:text-brand-600 transition-colors"
-          >
-            {mode === "login" ? "Sign up" : "Sign in"}
-          </button>
-        </p>
+            <GoogleSignInButton
+              onCredential={handleGoogleLogin}
+              disabled={isPending}
+              selectedRole="customer"
+              onRoleChange={setRole}
+              showRoleSelector={false}
+            />
+          </>
+        )}
+
+        <div className="text-center mt-5 text-sm text-surface-400 flex flex-col gap-2">
+          {(mode === "login" || mode === "register") ? (
+            <p>
+              {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode(mode === "login" ? "register" : "login");
+                  setError("");
+                  setMessage("");
+                  setShowResend(false);
+                }}
+                className="font-semibold text-brand-500 hover:text-brand-600 transition-colors"
+              >
+                {mode === "login" ? "Sign up" : "Sign in"}
+              </button>
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setMode("login");
+                setError("");
+                setMessage("");
+              }}
+              className="font-semibold text-brand-500 hover:text-brand-600 transition-colors"
+            >
+              Back to sign in
+            </button>
+          )}
+
+          {mode === "verify-email" && (
+             <button
+              type="button"
+              onClick={() => {
+                if (!email) { setError("Enter your email first."); return; }
+                resendVerification.mutate(
+                  { email, role },
+                  {
+                    onSuccess: (data) => {
+                      setError("");
+                      if (data.emailSent === false) {
+                        setError(data.message || "Could not send verification email.");
+                        setMessage("");
+                      } else {
+                        setMessage(data.message || "Verification code resent.");
+                      }
+                    },
+                    onError: (err) => setError(getErrorMessage(err))
+                  }
+                );
+              }}
+              className="font-semibold text-brand-500 hover:text-brand-600 transition-colors"
+            >
+              Resend verification code
+            </button>
+          )}
+
+          {mode === "forgot-password" && (
+            <button
+              type="button"
+              onClick={() => {
+                setMode("reset-password");
+                setError("");
+                setMessage("");
+              }}
+              className="font-semibold text-brand-500 hover:text-brand-600 transition-colors"
+            >
+              Already have a code? Reset password
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
