@@ -30,7 +30,7 @@ const envSchema = z.object({
   SMTP_FROM: z.string().email().optional(),
   SMTP_FORCE_IPV4: z.string().optional().transform((val) => val !== "false" && val !== "0"),
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM: z.string().email().optional(),
+  RESEND_FROM: z.string().min(3).optional(),
   // OpenRouter chat assistant (optional, falls back to local replies if not set)
   OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api"),
   OPENROUTER_API_KEY: z.string().optional(),
