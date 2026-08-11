@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import dns from "node:dns/promises";
 import { User } from "../models/User.js";
 import { MerchantProfile } from "../models/MerchantProfile.js";
 import { env } from "../config/env.js";
@@ -98,16 +99,51 @@ function isSmtpConfigured() {
   return true;
 }
 
-function getMailTransport() {
+function redactMailError(err) {
+  return {
+    code: err?.code,
+    command: err?.command,
+    syscall: err?.syscall,
+    address: err?.address,
+    port: err?.port,
+    message: err?.message
+  };
+}
+
+async function resolveSmtpHost(host) {
+  if (!env.SMTP_FORCE_IPV4) {
+    return { host, servername: host };
+  }
+  try {
+    const addresses = await dns.resolve4(host);
+    const ipv4 = addresses?.[0];
+    if (ipv4) {
+      return { host: ipv4, servername: host };
+    }
+  } catch (err) {
+    logger.warn({ err: redactMailError(err), host }, "SMTP IPv4 lookup failed; falling back to configured host");
+  }
+  return { host, servername: host };
+}
+
+async function getMailTransport(overrides = {}) {
   if (!isSmtpConfigured()) return null;
+  const requestedHost = overrides.host || env.SMTP_HOST;
+  const { host, servername } = await resolveSmtpHost(requestedHost);
+  const port = overrides.port || env.SMTP_PORT || 587;
+  const secure = overrides.secure ?? env.SMTP_SECURE ?? port === 465;
   return nodemailer.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT || 587,
-    secure: env.SMTP_SECURE ?? false,
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
-    family: 4, // Force IPv4 to prevent ENETUNREACH on Render
+    host,
+    port,
+    secure,
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000,
+    family: env.SMTP_FORCE_IPV4 ? 4 : undefined,
+    tls: {
+      servername,
+      minVersion: "TLSv1.2"
+    },
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS
@@ -116,22 +152,38 @@ function getMailTransport() {
 }
 
 async function sendOtpEmail(to, purpose, code) {
-  const transporter = getMailTransport();
   const message = buildOtpMessage({ purpose, code, minutes: OTP_TTL_MINUTES });
-  if (!transporter) {
+  if (!isSmtpConfigured()) {
     logger.warn({ to, purpose }, "SMTP not configured; OTP cannot be emailed");
     if (env.NODE_ENV !== "production") {
       logger.warn({ to, purpose, code }, "OTP logged for local development");
     }
     return { sent: false, reason: "not_configured" };
   }
-  await transporter.sendMail({
-    from: env.SMTP_FROM,
-    to,
-    subject: purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account",
-    text: message
-  });
-  return { sent: true };
+  const configuredPort = env.SMTP_PORT || 587;
+  const configuredSecure = env.SMTP_SECURE ?? configuredPort === 465;
+  const attempts = [
+    { port: configuredPort, secure: configuredSecure },
+    ...(env.SMTP_HOST === "smtp.gmail.com" && configuredPort !== 587 ? [{ port: 587, secure: false }] : []),
+    ...(env.SMTP_HOST === "smtp.gmail.com" && configuredPort !== 465 ? [{ port: 465, secure: true }] : [])
+  ];
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      const transporter = await getMailTransport(attempt);
+      await transporter.sendMail({
+        from: env.SMTP_FROM,
+        to,
+        subject: purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account",
+        text: message
+      });
+      return { sent: true, port: attempt.port };
+    } catch (err) {
+      lastError = err;
+      logger.warn({ err: redactMailError(err), to, purpose, port: attempt.port }, "OTP email attempt failed");
+    }
+  }
+  throw lastError || new Error("OTP email delivery failed");
 }
 
 function queueOtpEmail(to, purpose, code) {
