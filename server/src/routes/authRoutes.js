@@ -12,12 +12,12 @@ const emailOnlySchema = z.object({
 });
 const verifyEmailSchema = z.object({
   email: z.string().email().trim().toLowerCase(),
-  code: z.string().min(4).max(12),
+  code: z.string().trim().min(4).max(12),
   role: z.enum(["customer", "merchant"]).default("customer")
 });
 const resetPasswordSchema = z.object({
   email: z.string().email().trim().toLowerCase(),
-  code: z.string().min(4).max(12),
+  code: z.string().trim().min(4).max(12),
   role: z.enum(["customer", "merchant"]).default("customer"),
   password: z.string().min(8).max(128).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one lowercase letter, one uppercase letter, and one digit")
 });

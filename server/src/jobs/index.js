@@ -50,9 +50,11 @@ function startCronJobs() {
       const claimsToExpire = await Claim.find({
         status: "reserved",
         expiresAt: { $lte: now }
-      }).select("_id listingId");
+      }).select("_id listingId customerId");
       if (claimsToExpire.length === 0) return;
       const claimIds = claimsToExpire.map((c) => c._id);
+      
+      // Update claims to expired
       await Claim.updateMany(
         { _id: { $in: claimIds } },
         { $set: { status: "expired" } }
@@ -61,10 +63,25 @@ function startCronJobs() {
         { count: claimsToExpire.length },
         "Expired stale claims via cron"
       );
-      const listingIncrements = /* @__PURE__ */ new Map();
+
+      // Penalize users for no-shows
+      const penaltyDurationHours = 24;
+      const bannedUntil = new Date(now.getTime() + penaltyDurationHours * 60 * 60 * 1000);
+      const customerIds = [...new Set(claimsToExpire.map(c => c.customerId.toString()))];
+      
+      const { User } = await import("../models/User.js");
+      await User.updateMany(
+        { _id: { $in: customerIds } },
+        { 
+          $inc: { noShowCount: 1 },
+          $set: { claimBannedUntil: bannedUntil } 
+        }
+      );
+
+      const listingIncrements = new Map();
       for (const claim of claimsToExpire) {
         const key = claim.listingId.toString();
-        listingIncrements.set(key, (listingIncrements.get(key) || 0) + 1);
+        listingIncrements.set(key, (listingIncrements.get(key) || 0) + (claim.quantity || 1));
       }
       for (const [listingId, increment] of listingIncrements) {
         await Listing.findOneAndUpdate(

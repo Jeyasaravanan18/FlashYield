@@ -60,6 +60,14 @@ const userSchema = new Schema(
     lastLoginAt: {
       type: Date,
       default: null
+    },
+    noShowCount: {
+      type: Number,
+      default: 0
+    },
+    claimBannedUntil: {
+      type: Date,
+      default: null
     }
   },
   {

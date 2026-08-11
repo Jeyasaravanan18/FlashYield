@@ -52,6 +52,16 @@ const claimService = {
       logger.info({ idempotencyKey, claimId: existingClaim._id }, "Idempotent claim returned");
       return { claim: existingClaim, token: existingClaim.token };
     }
+    const { User } = await import("../models/User.js");
+    const user = await User.findById(customerId);
+    if (!user) throw new NotFoundError("User not found");
+
+    if (user.claimBannedUntil && user.claimBannedUntil > new Date()) {
+      throw new ForbiddenError(
+        "You are temporarily banned from claiming items due to a recent no-show. Try again later."
+      );
+    }
+
     if (!mongoose.Types.ObjectId.isValid(listingId)) {
       throw new BadRequestError("Invalid listing ID");
     }

@@ -285,6 +285,7 @@ const authService = {
           role: roleToCreate,
           emailVerified: true
         });
+        await createMerchantProfileForUser(user, merchantProfile);
       } else {
         // User exists with email
         if (!isLogin && requestedRole && user.role !== requestedRole) {
