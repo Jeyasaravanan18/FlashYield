@@ -107,6 +107,7 @@ function getMailTransport() {
     connectionTimeout: 8000,
     greetingTimeout: 8000,
     socketTimeout: 10000,
+    family: 4, // Force IPv4 to prevent ENETUNREACH on Render
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS
