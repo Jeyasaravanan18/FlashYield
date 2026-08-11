@@ -175,7 +175,7 @@
 }
 
 #qr-reader a {
-  @apply text-brand-600 hover:text-brand-700 font-medium;
+  @apply text-brand-500 hover:text-brand-600 font-medium;
 }
 
 #qr-reader__dashboard_section_csr span {
