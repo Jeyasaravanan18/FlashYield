@@ -16,22 +16,22 @@ import {
 import { useState } from "react";
 import { useCountdown } from "../../hooks/useCountdown";
 import {
+  Bell,
+  ChevronRight,
+  Clock3,
+  DollarSign,
+  Edit2,
+  FileText,
+  PackageSearch,
+  Plus,
+  Rocket,
   ScanLine,
   ShoppingBag,
-  TrendingUp,
-  X,
-  DollarSign,
-  Plus,
   Sparkles,
-  Bell,
-  Clock3,
-  Rocket,
-  PackageSearch,
-  FileText,
-  ChevronRight,
   Store,
-  Edit2,
-  Users
+  TrendingUp,
+  Users,
+  X
 } from "lucide-react";
 
 function MerchantDashboard() {
