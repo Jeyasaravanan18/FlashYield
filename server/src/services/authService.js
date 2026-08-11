@@ -122,8 +122,7 @@ async function sendOtpEmail(to, purpose, code) {
     if (env.NODE_ENV !== "production") {
       logger.warn({ to, purpose, code }, "OTP logged for local development");
     }
-    // OTP BYPASS: Fake a successful send so the frontend doesn't show an error.
-    return { sent: true, bypass: true };
+    return { sent: false, reason: "not_configured" };
   }
   await transporter.sendMail({
     from: env.SMTP_FROM,
@@ -181,9 +180,6 @@ function assertOtpValid(user, purpose, code) {
   const now = Date.now();
   const hash = crypto.createHash("sha256").update(code).digest("hex");
   if (purpose === "verify") {
-    if (!isSmtpConfigured() && code === "000000") {
-      return true; // Bypass for demo/unconfigured SMTP
-    }
     if (!user.emailVerificationCodeHash || !user.emailVerificationCodeExpiresAt || user.emailVerificationCodeExpiresAt.getTime() < now) {
       throw new BadRequestError("Verification code has expired. Request a new code.");
     }
@@ -191,9 +187,6 @@ function assertOtpValid(user, purpose, code) {
       throw new BadRequestError("Invalid verification code");
     }
   } else {
-    if (!isSmtpConfigured() && code === "000000") {
-      return true; // Bypass for demo/unconfigured SMTP
-    }
     if (!user.passwordResetCodeHash || !user.passwordResetCodeExpiresAt || user.passwordResetCodeExpiresAt.getTime() < now) {
       throw new BadRequestError("Reset code has expired. Request a new code.");
     }
