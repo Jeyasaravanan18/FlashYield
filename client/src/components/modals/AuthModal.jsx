@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
-import { useGoogleLogin, useLogin, useRegister } from "../../api/hooks";
-import { getErrorMessage } from "../../lib/api";
+import { useGoogleLogin, useLogin, useRegister, useResendVerification } from "../../api/hooks";
+import { api, getErrorMessage } from "../../lib/api";
 import { Loader2, Leaf, X, Store, ShoppingBag } from "lucide-react";
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 
@@ -22,10 +22,12 @@ export function AuthModal() {
     description: ""
   });
   const [error, setError] = useState("");
+  const [showResend, setShowResend] = useState(false);
 
   const login = useLogin();
   const register = useRegister();
   const googleLogin = useGoogleLogin();
+  const resendVerification = useResendVerification();
   const navigate = useNavigate();
 
   if (!isAuthModalOpen) return null;
@@ -33,10 +35,11 @@ export function AuthModal() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setShowResend(false);
 
     if (mode === "login") {
       login.mutate(
-        { email, password, role },
+        { email, password },
         {
           onSuccess: (data) => {
             closeAuthModal();
@@ -44,7 +47,13 @@ export function AuthModal() {
             if (userRole === "merchant") navigate("/merchant");
             else if (userRole === "admin") navigate("/admin");
           },
-          onError: (err) => setError(getErrorMessage(err))
+          onError: (err) => {
+            const message = getErrorMessage(err);
+            setError(message);
+            if (message.toLowerCase().includes("verify your email") || message.toLowerCase().includes("verification")) {
+              setShowResend(true);
+            }
+          }
         }
       );
     } else {
@@ -80,6 +89,7 @@ export function AuthModal() {
         description: ""
       });
       setError("");
+      setShowResend(false);
     }, 200);
   };
 
@@ -87,6 +97,8 @@ export function AuthModal() {
 
   const handleGoogleLogin = (credential) => {
     setError("");
+    setShowResend(false);
+
     if (
       mode === "register" &&
       role === "merchant" &&
@@ -99,7 +111,7 @@ export function AuthModal() {
     googleLogin.mutate(
       {
         credential,
-        role,
+        role: mode === "register" ? role : undefined,
         merchantProfile: mode === "register" && role === "merchant" ? merchantDetails : undefined,
         isLogin: mode === "login"
       },
@@ -145,6 +157,33 @@ export function AuthModal() {
             </div>
           )}
 
+          {showResend && mode === "login" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 font-medium flex items-center justify-between gap-2">
+              <span>Email not verified yet.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!email) { setError("Enter your email first."); return; }
+                  resendVerification.mutate(
+                    { email },
+                    {
+                      onSuccess: (data) => {
+                        setError("");
+                        if (data.emailSent === false) {
+                          setError(data.message || "Could not send verification email.");
+                        }
+                      },
+                      onError: (err) => setError(getErrorMessage(err))
+                    }
+                  );
+                }}
+                className="font-semibold text-brand-500 hover:text-brand-600 whitespace-nowrap transition-colors"
+              >
+                Resend code
+              </button>
+            </div>
+          )}
+
           <div>
             <label htmlFor="auth-email" className="label">
               Email
@@ -176,40 +215,41 @@ export function AuthModal() {
             />
           </div>
 
-          <div>
-            <label className="label">Account type</label>
-            <div className="grid grid-cols-2 gap-3 mt-1.5">
-              <button
-                type="button"
-                onClick={() => setRole("customer")}
-                className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
-                  role === "customer"
-                    ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
-                    : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
-                }`}
-              >
-                <ShoppingBag className="w-4 h-4" />
-                Customer
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("merchant")}
-                className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
-                  role === "merchant"
-                    ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
-                    : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
-                }`}
-              >
-                <Store className="w-4 h-4" />
-                Merchant
-              </button>
-            </div>
-            {mode === "register" && (
+          {/* Only show role selector in register mode */}
+          {mode === "register" && (
+            <div>
+              <label className="label">Account type</label>
+              <div className="grid grid-cols-2 gap-3 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setRole("customer")}
+                  className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+                    role === "customer"
+                      ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
+                      : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
+                  }`}
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  Customer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("merchant")}
+                  className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+                    role === "merchant"
+                      ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm shadow-brand-500/10"
+                      : "border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50"
+                  }`}
+                >
+                  <Store className="w-4 h-4" />
+                  Merchant
+                </button>
+              </div>
               <p className="mt-2 text-xs text-surface-400">
                 {role === "merchant" ? "Seller accounts need store details before activation." : "Customer accounts can claim nearby rescue bundles."}
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {mode === "register" && role === "merchant" && (
             <div className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4 space-y-3">
@@ -313,7 +353,7 @@ export function AuthModal() {
           <GoogleSignInButton
             onCredential={handleGoogleLogin}
             disabled={isPending}
-            selectedRole={role}
+            selectedRole={mode === "register" ? role : "customer"}
             onRoleChange={setRole}
             showRoleSelector={false}
           />
@@ -326,6 +366,7 @@ export function AuthModal() {
             onClick={() => {
               setMode(mode === "login" ? "register" : "login");
               setError("");
+              setShowResend(false);
             }}
             className="font-semibold text-brand-500 hover:text-brand-600 transition-colors"
           >

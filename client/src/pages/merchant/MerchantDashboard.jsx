@@ -30,7 +30,8 @@ import {
   FileText,
   ChevronRight,
   Store,
-  Edit2
+  Edit2,
+  Users
 } from "lucide-react";
 
 function MerchantDashboard() {

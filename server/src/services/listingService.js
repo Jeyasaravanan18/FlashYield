@@ -197,20 +197,70 @@ const listingService = {
       },
       { $sort: { distance: 1, "listings.createdAt": -1 } }
     ];
-    const countPipeline = [...pipeline, { $count: "total" }];
-    const countResult = await MerchantProfile.aggregate(countPipeline);
-    const total = countResult.length > 0 ? countResult[0].total : 0;
-    pipeline.push({ $skip: skip }, { $limit: limit });
-    const data = await MerchantProfile.aggregate(pipeline);
-    return {
-      data,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
+    try {
+      const countPipeline = [...pipeline, { $count: "total" }];
+      const countResult = await MerchantProfile.aggregate(countPipeline);
+      const total = countResult.length > 0 ? countResult[0].total : 0;
+      pipeline.push({ $skip: skip }, { $limit: limit });
+      const data = await MerchantProfile.aggregate(pipeline);
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (err) {
+      const message = String(err?.message || "");
+      const isGeoIndexProblem = message.includes("$geoNear") || message.includes("2dsphere") || message.includes("geo");
+      if (!isGeoIndexProblem) throw err;
+      logger.warn({ err }, "Nearby geo query failed; falling back to non-distance listing feed");
+      const fallbackQuery = {
+        status: "active",
+        claimWindowEnd: { $gt: now },
+        ...(category ? { category } : {}),
+        ...(dietaryTags ? { dietaryTags: { $in: dietaryTags.split(",") } } : {})
+      };
+      const total = await Listing.countDocuments(fallbackQuery);
+      const listings = await Listing.find(fallbackQuery)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: "merchantId",
+          match: { verificationStatus: "approved" },
+          select: "businessName address location imageUrl"
+        })
+        .lean();
+      const data = listings
+        .filter((listing) => listing.merchantId)
+        .map((listing) => {
+          const { merchantId, ...rest } = listing;
+          return {
+            ...rest,
+            merchant: {
+              _id: merchantId._id,
+              businessName: merchantId.businessName,
+              address: merchantId.address,
+              location: merchantId.location,
+              imageUrl: merchantId.imageUrl
+            },
+            distance: null
+          };
+        });
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        },
+        degraded: true
+      };
+    }
   },
   /**
    * Get a single listing by ID, populated with merchant info.

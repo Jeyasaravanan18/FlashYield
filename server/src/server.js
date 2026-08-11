@@ -7,6 +7,8 @@ import { initializeSocketServer } from "./socket/socketServer.js";
 import { startCronJobs, stopCronJobs } from "./jobs.js";
 import { logger } from "./utils/logger.js";
 import { User } from "./models/User.js";
+import { Listing } from "./models/Listing.js";
+import { MerchantProfile } from "./models/MerchantProfile.js";
 const server = http.createServer(app);
 async function ensureUserIndexes() {
   const indexes = await User.collection.indexes();
@@ -20,12 +22,19 @@ async function ensureUserIndexes() {
   }
   await User.syncIndexes();
 }
+async function ensureMarketplaceIndexes() {
+  await Promise.all([
+    MerchantProfile.syncIndexes(),
+    Listing.syncIndexes()
+  ]);
+}
 async function bootstrap() {
   try {
     await connectDatabase();
     try {
       await ensureUserIndexes();
-      logger.info("✅ User indexes synced");
+      await ensureMarketplaceIndexes();
+      logger.info("✅ Database indexes synced");
     } catch (syncErr) {
       logger.warn({ err: syncErr }, "User index sync skipped or partially applied");
     }

@@ -8,7 +8,7 @@ import { z } from "zod";
 const router = Router();
 const emailOnlySchema = z.object({
   email: z.string().email().trim().toLowerCase(),
-  role: z.enum(["customer", "merchant"]).default("customer")
+  role: z.enum(["customer", "merchant"]).optional()
 });
 const verifyEmailSchema = z.object({
   email: z.string().email().trim().toLowerCase(),
@@ -48,7 +48,7 @@ router.post(
   async (req, res, next) => {
     try {
       const { email, password } = req.body;
-      const result = await authService.login(email, password, req.ip, req.body.role);
+      const result = await authService.login(email, password, req.ip);
       res.cookie("refreshToken", result.tokens.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

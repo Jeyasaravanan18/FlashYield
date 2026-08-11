@@ -250,14 +250,18 @@ const authService = {
     };
   },
 
-  async login(email, password, ipAddress, role = "customer") {
+  async login(email, password, ipAddress) {
     const normalizedEmail = normalizeEmail(email);
-    const user = await User.findOne({ email: normalizedEmail, role }).select("+passwordHash");
-    if (!user) {
+    const candidates = await User.find({ email: normalizedEmail }).select("+passwordHash");
+    if (candidates.length === 0) {
       throw new UnauthorizedError("Invalid email or password");
     }
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
+    let user = null;
+    for (const candidate of candidates) {
+      const isMatch = await bcrypt.compare(password, candidate.passwordHash);
+      if (isMatch) { user = candidate; break; }
+    }
+    if (!user) {
       throw new UnauthorizedError("Invalid email or password");
     }
     if (!user.emailVerified) {
@@ -445,8 +449,16 @@ const authService = {
     return { message: "Password updated successfully" };
   },
 
-  async resendVerificationCode(email, role = "customer") {
-    const user = await User.findOne({ email: normalizeEmail(email), role });
+  async resendVerificationCode(email, role) {
+    const normalizedEmail = normalizeEmail(email);
+    let user;
+    if (role) {
+      user = await User.findOne({ email: normalizedEmail, role });
+    } else {
+      // No role specified (login flow) — find first unverified account with this email
+      const candidates = await User.find({ email: normalizedEmail, emailVerified: false });
+      user = candidates[0] || null;
+    }
     if (!user) {
       return { message: "If that email exists, a verification code has been sent." };
     }
