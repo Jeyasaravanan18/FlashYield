@@ -9,7 +9,8 @@ async function connectDatabase() {
       await mongoose.connect(env.MONGODB_URI, {
         // Mongoose 8 defaults are good; only override what's needed
         serverSelectionTimeoutMS: 5e3,
-        heartbeatFrequencyMS: 1e4
+        heartbeatFrequencyMS: 1e4,
+        family: 4
       });
       logger.info("\u2705 MongoDB connected");
       mongoose.connection.on("error", (err) => {

@@ -33,6 +33,22 @@ function globalErrorHandler(err, req, res, _next) {
     });
     return;
   }
+  if (
+    err.name === "MongooseServerSelectionError" ||
+    err.name === "MongoServerSelectionError" ||
+    err.name === "MongoNetworkError" ||
+    err.name === "MongoNetworkTimeoutError" ||
+    String(err.message || "").includes("connection <monitor>")
+  ) {
+    logger.error({ ...logContext, err }, "Database unavailable");
+    res.status(503).json({
+      error: {
+        code: "DATABASE_UNAVAILABLE",
+        message: "Database is temporarily unreachable. Check MongoDB Atlas network access and try again."
+      }
+    });
+    return;
+  }
   if (err.code === 11e3) {
     logger.warn({ ...logContext, err }, "Duplicate key error");
     const keyPattern = err.keyPattern || {};
