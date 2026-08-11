@@ -42,7 +42,7 @@ function AppLayout() {
   }, [locationStatus, openLocationModal]);
   const handleLogout = () => {
     logout.mutate(void 0, {
-      onSettled: () => navigate("/login")
+      onSettled: () => navigate("/")
     });
   };
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");

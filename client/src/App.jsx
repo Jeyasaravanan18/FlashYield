@@ -4,8 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./store/authStore";
 import { useSocket } from "./hooks/useSocket";
 import { AppLayout } from "./components/layout/AppLayout";
-import { LoginPage } from "./pages/auth/LoginPage";
-import { RegisterPage } from "./pages/auth/RegisterPage";
 import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
@@ -47,9 +45,10 @@ function ProtectedRoute({
   children,
   roles
 }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, openAuthModal } = useAuthStore();
   if (!isAuthenticated) {
-    return /* @__PURE__ */ jsx(Navigate, { to: "/login", replace: true });
+    openAuthModal();
+    return /* @__PURE__ */ jsx(Navigate, { to: "/", replace: true });
   }
   if (roles && user && !roles.includes(user.role)) {
     return /* @__PURE__ */ jsx(Navigate, { to: "/", replace: true });
@@ -66,8 +65,8 @@ function HomeRoute() {
 function AppRoutes() {
   useSocket();
   return /* @__PURE__ */ jsxs(Routes, { children: [
-    /* @__PURE__ */ jsx(Route, { path: "/login", element: /* @__PURE__ */ jsx(LoginPage, {}) }),
-    /* @__PURE__ */ jsx(Route, { path: "/register", element: /* @__PURE__ */ jsx(RegisterPage, {}) }),
+    /* @__PURE__ */ jsx(Route, { path: "/login", element: /* @__PURE__ */ jsx(Navigate, { to: "/", replace: true }) }),
+    /* @__PURE__ */ jsx(Route, { path: "/register", element: /* @__PURE__ */ jsx(Navigate, { to: "/", replace: true }) }),
     /* @__PURE__ */ jsx(Route, { path: "/verify-email", element: /* @__PURE__ */ jsx(VerifyEmailPage, {}) }),
     /* @__PURE__ */ jsx(Route, { path: "/forgot-password", element: /* @__PURE__ */ jsx(ForgotPasswordPage, {}) }),
     /* @__PURE__ */ jsx(Route, { path: "/reset-password", element: /* @__PURE__ */ jsx(ResetPasswordPage, {}) }),

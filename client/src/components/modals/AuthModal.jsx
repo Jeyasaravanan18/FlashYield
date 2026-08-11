@@ -130,7 +130,7 @@ export function AuthModal() {
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleDismiss} />
       
-      <div className="relative max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 animate-scale-in">
+      <div className="relative max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl max-w-[440px] w-full p-8 sm:p-10 animate-scale-in">
         <button
           onClick={handleDismiss}
           className="absolute top-4 right-4 p-1.5 rounded-xl text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors"
@@ -138,15 +138,19 @@ export function AuthModal() {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center mb-4 shadow-lg shadow-brand-500/20">
-            <Leaf className="w-6 h-6 text-white" />
+        <div className="flex flex-col items-center mb-8">
+          <div className="mb-4 flex items-center justify-center">
+            <span className="text-3xl font-display font-bold bg-gradient-to-r from-brand-500 to-brand-400 bg-clip-text text-transparent tracking-tight uppercase">
+              FlashYield
+            </span>
           </div>
-          <h2 className="text-xl font-bold text-surface-900">
+          <h2 className="text-2xl font-normal tracking-tight text-surface-900 sm:text-3xl text-center">
             {mode === "login" ? "Welcome back" : "Create an account"}
           </h2>
-          <p className="mt-1 text-sm text-surface-400">
-            {mode === "login" ? "Sign in to claim bundles" : "Join to save money and reduce waste"}
+          <p className="mt-2 text-sm text-surface-500 text-center max-w-xs">
+            {mode === "login" 
+              ? "Sign in to claim local surplus bundles." 
+              : "Rescue fresh food. Sell surplus faster."}
           </p>
         </div>
 

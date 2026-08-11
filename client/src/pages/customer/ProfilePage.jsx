@@ -44,7 +44,7 @@ function formatDisplayValue(value) {
 }
 
 function ProfilePage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, openAuthModal } = useAuthStore();
   const navigate = useNavigate();
   const logout = useLogout();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -61,12 +61,15 @@ function ProfilePage() {
   const { data: merchantTools, isLoading: merchantToolsLoading } = useMerchantProfileTools({ enabled: isAuthenticated && isMerchant });
 
   useEffect(() => {
-    if (!isAuthenticated) navigate("/login", { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (!isAuthenticated) {
+      openAuthModal();
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate, openAuthModal]);
 
   const handleLogout = () => {
     logout.mutate(void 0, {
-      onSettled: () => navigate("/login")
+      onSettled: () => navigate("/")
     });
   };
 

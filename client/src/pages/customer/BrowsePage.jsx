@@ -5,6 +5,7 @@ import { useNearbyListings } from "../../api/hooks";
 import { useCountdown } from "../../hooks/useCountdown";
 import { useLocationStore } from "../../store/locationStore";
 import { useFavoritesStore } from "../../store/favoritesStore";
+import { useAuthStore } from "../../store/authStore";
 import { Search, Clock, MapPin, Star, Heart } from "lucide-react";
 const CATEGORIES = [
   { id: "", label: "All" },
@@ -179,7 +180,7 @@ function BrowsePage() {
               /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-600", children: "Your token expires 30 minutes after booking, so collect promptly." })
             ] })
           ] }),
-          /* @__PURE__ */ jsx(Link, { to: "/register", className: "btn-primary w-full py-3.5 text-sm flex justify-center", children: "Start claiming \u2192" })
+          /* @__PURE__ */ jsx("button", { onClick: () => useAuthStore.getState().openAuthModal(), className: "btn-primary w-full py-3.5 text-sm flex justify-center", children: "Start claiming \u2192" })
         ] }),
         /* @__PURE__ */ jsxs("div", { className: "card p-7", children: [
           /* @__PURE__ */ jsx("h3", { className: "font-display text-xl font-bold uppercase mb-5 text-surface-900", children: "How It Works" }),

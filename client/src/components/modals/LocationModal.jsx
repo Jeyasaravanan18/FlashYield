@@ -41,7 +41,7 @@ function LocationModal() {
   };
   return /* @__PURE__ */ jsxs("div", { className: "fixed inset-0 z-[999] flex items-center justify-center p-4 animate-fade-in", children: [
     /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-black/40 backdrop-blur-sm", onClick: handleDismiss }),
-    /* @__PURE__ */ jsxs("div", { className: "relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-scale-in", children: [
+    /* @__PURE__ */ jsxs("div", { className: "relative bg-white rounded-3xl shadow-2xl max-w-[440px] w-full p-8 sm:p-10 animate-scale-in", children: [
       /* @__PURE__ */ jsx(
         "button",
         {
@@ -51,15 +51,15 @@ function LocationModal() {
         }
       ),
       /* @__PURE__ */ jsx("div", { className: "flex justify-center mb-6", children: /* @__PURE__ */ jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ jsx("div", { className: "w-20 h-20 rounded-3xl bg-gradient-to-br from-brand-400/10 to-brand-500/20 flex items-center justify-center", children: /* @__PURE__ */ jsx(MapPin, { className: "w-10 h-10 text-brand-500", strokeWidth: 1.5 }) }),
-        /* @__PURE__ */ jsx("div", { className: "absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-accent-500 flex items-center justify-center shadow-md", children: /* @__PURE__ */ jsx(Navigation, { className: "w-3.5 h-3.5 text-white" }) })
+        /* @__PURE__ */ jsx("div", { className: "w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-400/10 to-brand-500/20 flex items-center justify-center shadow-inner", children: /* @__PURE__ */ jsx(MapPin, { className: "w-8 h-8 text-brand-500", strokeWidth: 1.5 }) }),
+        /* @__PURE__ */ jsx("div", { className: "absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent-500 flex items-center justify-center shadow-md border-2 border-white", children: /* @__PURE__ */ jsx(Navigation, { className: "w-3 h-3 text-white" }) })
       ] }) }),
-      /* @__PURE__ */ jsxs("h2", { className: "text-xl font-bold text-surface-900 text-center mb-2", children: [
+      /* @__PURE__ */ jsxs("h2", { className: "text-2xl font-normal tracking-tight text-surface-900 sm:text-3xl text-center mb-2", children: [
         "Share location to find",
         /* @__PURE__ */ jsx("br", {}),
         "nearby flash deals"
       ] }),
-      /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-400 text-center mb-8 max-w-xs mx-auto", children: "See surplus food from kitchens closest to you and never miss a deal in your neighborhood." }),
+      /* @__PURE__ */ jsx("p", { className: "text-sm text-surface-500 text-center mb-8 max-w-[280px] mx-auto", children: "See surplus food from kitchens closest to you and never miss a deal in your neighborhood." }),
       (status === "granted" || status === "fallback") && /* @__PURE__ */ jsxs("div", { className: "mb-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700", children: [
         "Current area: ",
         jsx("strong", { children: label })
@@ -70,7 +70,7 @@ function LocationModal() {
         {
           onClick: handleShareLocation,
           disabled: status === "requesting",
-          className: "btn-primary w-full py-3.5 text-base flex items-center justify-center gap-2 mb-4",
+          className: "btn-primary w-full py-3.5 text-sm flex items-center justify-center gap-2 mb-4",
           children: status === "requesting" ? /* @__PURE__ */ jsxs(Fragment, { children: [
             /* @__PURE__ */ jsx("div", { className: "w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" }),
             "Locating..."
@@ -94,7 +94,7 @@ function LocationModal() {
             placeholder: "Search city, area, or zip code...",
             value: searchQuery,
             onChange: (e) => setSearchQuery(e.target.value),
-            className: "w-full pl-9 pr-4 py-3 bg-surface-50 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
+            className: "input pl-9 bg-surface-50"
           }
         ),
         isSearching && /* @__PURE__ */ jsx(Loader2, { className: "absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-500 animate-spin" })
