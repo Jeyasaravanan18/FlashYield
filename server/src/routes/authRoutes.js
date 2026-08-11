@@ -47,8 +47,8 @@ router.post(
   validate({ body: loginSchema }),
   async (req, res, next) => {
     try {
-      const { email, password, role } = req.body;
-      const result = await authService.login(email, password, role, req.ip);
+      const { email, password } = req.body;
+      const result = await authService.login(email, password, req.ip);
       res.cookie("refreshToken", result.tokens.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -71,8 +71,8 @@ router.post(
   validate({ body: verifyEmailSchema }),
   async (req, res, next) => {
     try {
-      const { email, code, role } = req.body;
-      const result = await authService.verifyEmail(email, code, role);
+      const { email, code } = req.body;
+      const result = await authService.verifyEmail(email, code);
       res.json(result);
     } catch (err) {
       next(err);
@@ -85,7 +85,7 @@ router.post(
   validate({ body: emailOnlySchema }),
   async (req, res, next) => {
     try {
-      const result = await authService.resendVerificationCode(req.body.email, req.body.role);
+      const result = await authService.resendVerificationCode(req.body.email);
       res.json(result);
     } catch (err) {
       next(err);
@@ -98,7 +98,7 @@ router.post(
   validate({ body: emailOnlySchema }),
   async (req, res, next) => {
     try {
-      const result = await authService.requestPasswordReset(req.body.email, req.body.role);
+      const result = await authService.requestPasswordReset(req.body.email);
       res.json(result);
     } catch (err) {
       next(err);
@@ -111,8 +111,8 @@ router.post(
   validate({ body: resetPasswordSchema }),
   async (req, res, next) => {
     try {
-      const { email, code, password, role } = req.body;
-      const result = await authService.resetPassword(email, code, password, role);
+      const { email, code, password } = req.body;
+      const result = await authService.resetPassword(email, code, password);
       res.json(result);
     } catch (err) {
       next(err);
