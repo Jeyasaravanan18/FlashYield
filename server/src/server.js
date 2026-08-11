@@ -1,3 +1,6 @@
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first"); // Fix for Render ENETUNREACH with IPv6
+
 import http from "http";
 import { app } from "./app.js";
 import { env } from "./config/env.js";
