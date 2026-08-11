@@ -138,8 +138,8 @@ function assertOtpValid(user, purpose, code) {
   }
 }
 
-async function createMerchantProfileForUser(user, profileData = {}) {
-  if (user.role !== "merchant" || !profileData.businessName || !profileData.address || !profileData.phone) {
+async function createMerchantProfileForUser(user, profileData) {
+  if (user.role !== "merchant" || !profileData || !profileData.businessName || !profileData.address || !profileData.phone) {
     return null;
   }
   const existing = await MerchantProfile.findOne({ userId: user._id });
