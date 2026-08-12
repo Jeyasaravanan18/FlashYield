@@ -21,10 +21,14 @@ function useGoogleLogin() {
   });
 }
 function useRegister() {
+  const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
     mutationFn: async (data) => {
       const res = await api.post("/auth/register", data);
       return res.data;
+    },
+    onSuccess: (data) => {
+      setAuth(data.user, data.accessToken);
     }
   });
 }

@@ -29,12 +29,19 @@ router.post(
     try {
       const { email, password, role, firstName, lastName, phone, merchantProfile } = req.body;
       const result = await authService.register(email, password, role, firstName, lastName, phone, req.ip, merchantProfile);
+      
+      res.cookie("refreshToken", result.tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1e3,
+        path: "/api/v1/auth"
+      });
+
       res.status(201).json({
         user: result.user,
-        accessToken: result.tokens?.accessToken || null,
-        requiresVerification: true,
-        emailSent: !!result.otpDelivery?.sent,
-        message: result.message || "Account created. Check your email for a verification code."
+        accessToken: result.tokens.accessToken,
+        message: result.message
       });
     } catch (err) {
       next(err);

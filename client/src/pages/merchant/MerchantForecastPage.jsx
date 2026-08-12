@@ -16,8 +16,8 @@ export function MerchantForecastPage() {
           jsxs("div", {
             children: [
               jsx("p", { className: "mb-2 text-xs font-semibold uppercase tracking-wider text-brand-600", children: "Merchant analytics" }),
-              jsx("h1", { className: "text-3xl font-bold text-surface-50", children: "Inventory forecast" }),
-              jsx("p", { className: "mt-1 text-sm text-surface-400", children: "Predicted leftovers based on your own recent listings and claim history." })
+              jsx("h1", { className: "text-3xl font-bold text-surface-900", children: "Inventory forecast" }),
+              jsx("p", { className: "mt-1 text-sm text-surface-500", children: "Predicted leftovers based on your own recent listings and claim history." })
             ]
           }),
           jsx(Link, { to: "/merchant", className: "btn-ghost btn-sm", children: "Back to dashboard" })
@@ -33,21 +33,21 @@ export function MerchantForecastPage() {
                   className: "card p-5",
                   children: [
                     jsx("p", { className: "text-xs font-bold uppercase tracking-wider text-surface-400", children: "Expected leftover" }),
-                    jsx("p", { className: "mt-2 text-3xl font-bold text-surface-50", children: data.expectedLeftover })
+                    jsx("p", { className: "mt-2 text-3xl font-bold text-surface-900", children: data.expectedLeftover })
                   ]
                 }),
                 jsxs("div", {
                   className: "card p-5",
                   children: [
                     jsx("p", { className: "text-xs font-bold uppercase tracking-wider text-surface-400", children: "Confidence" }),
-                    jsx("p", { className: "mt-2 text-3xl font-bold text-surface-50", children: `${data.confidence ?? 0}%` })
+                    jsx("p", { className: "mt-2 text-3xl font-bold text-surface-900", children: `${data.confidence ?? 0}%` })
                   ]
                 }),
                 jsxs("div", {
                   className: "card p-5",
                   children: [
                     jsx("p", { className: "text-xs font-bold uppercase tracking-wider text-surface-400", children: "Best hour" }),
-                    jsx("p", { className: "mt-2 text-3xl font-bold text-surface-50", children: data.bestHour === null ? "—" : `${data.bestHour}:00` })
+                    jsx("p", { className: "mt-2 text-3xl font-bold text-surface-900", children: data.bestHour === null ? "—" : `${data.bestHour}:00` })
                   ]
                 }),
                 jsx("div", {
@@ -111,11 +111,15 @@ export function MerchantForecastPage() {
               className: "card border-dashed p-10 text-center",
               children: [
                 jsx("div", { className: "mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-50", children: jsx(PackageSearch, { className: "h-5 w-5 text-brand-500" }) }),
-                jsx("div", { className: "text-lg font-semibold text-surface-50", children: "No forecast yet for this merchant" }),
-                jsx("div", { className: "mt-1 text-sm text-surface-400", children: "Create and complete a few listings first. The forecast is merchant-specific and only appears once your own history exists." })
+                jsxs("div", {
+                  className: "text-center",
+                  children: [
+                    jsx("div", { className: "text-lg font-semibold text-surface-900", children: "No forecast yet for this merchant" }),
+                    jsx("div", { className: "mt-1 text-sm text-surface-500", children: "Create and complete a few listings first. The forecast is merchant-specific and only appears once your own history exists." })
+                  ]
+                })
               ]
             })
     ]
   });
 }
-

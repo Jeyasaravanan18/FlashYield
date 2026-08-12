@@ -613,13 +613,41 @@ router.get("/forecast", authenticate, roleGuard("merchant"), async (req, res, ne
     const bestHour = peakCount > 0 ? hourCounts.indexOf(peakCount) : null;
     const pace = recentListings.reduce((sum, listing) => sum + ((listing.quantityTotal || 0) - (listing.quantityAvailable || 0)), 0) / Math.max(1, recentListings.length);
     const expectedLeftover = Math.max(0, Math.round(avgQuantity * (1 - avgTakeRate) + pace * 0.35 + soldOutRate * 2));
+    const titleCounts = {};
+    recentListings.forEach((listing) => {
+      const title = listing.title || "Surprise Bag";
+      titleCounts[title] = (titleCounts[title] || 0) + 1;
+    });
+
+    const sortedTitles = Object.entries(titleCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map((entry) => entry[0]);
+
+    // Generate up to 3 suggested bundles from the most frequent items
+    const suggestedBundles = sortedTitles.slice(0, 3).map((title, index) => {
+      // distribute expected leftover roughly among the top items
+      const share = index === 0 ? 0.6 : index === 1 ? 0.3 : 0.1;
+      const leftover = Math.max(0, Math.round(expectedLeftover * share));
+      const discount = Math.round((20 + avgDiscount * 30) + (index * 5)); // slightly higher discount for less common items
+      return {
+        name: title,
+        expectedLeftover: leftover,
+        recommendedDiscountPct: Math.min(80, discount) // cap discount at 80%
+      };
+    });
+
+    if (suggestedBundles.length === 0) {
+      suggestedBundles.push({
+        name: "Surprise Bag",
+        expectedLeftover,
+        recommendedDiscountPct: Math.round(20 + avgDiscount * 30)
+      });
+    }
+
     res.json({
       expectedLeftover,
       confidence: Math.max(20, Math.min(96, Math.round((1 - soldOutRate) * 100 + avgTakeRate * 20))),
-      suggestedBundles: [
-        { name: "Pastry Box", expectedLeftover: Math.max(0, Math.round(expectedLeftover * 0.6)), recommendedDiscountPct: Math.round(20 + avgDiscount * 30) },
-        { name: "Meal Box", expectedLeftover: Math.max(0, Math.round(expectedLeftover * 0.4)), recommendedDiscountPct: Math.round(18 + avgTakeRate * 25) }
-      ],
+      suggestedBundles,
       bestHour,
       hasHistory: true,
       signalSummary: {

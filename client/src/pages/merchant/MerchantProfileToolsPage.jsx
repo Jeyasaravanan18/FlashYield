@@ -191,8 +191,8 @@ export function MerchantProfileToolsPage() {
           jsxs("div", {
             children: [
               jsx("p", { className: "mb-2 text-xs font-semibold uppercase tracking-wider text-brand-600", children: "Merchant operations" }),
-              jsx("h1", { className: "text-3xl font-bold text-surface-50", children: "Profile tools" }),
-              jsx("p", { className: "mt-1 text-sm text-surface-400", children: "Change store details and pin the exact pickup location." })
+              jsx("h1", { className: "text-3xl font-bold text-surface-900", children: "Profile tools" }),
+              jsx("p", { className: "mt-1 text-sm text-surface-500", children: "Change store details and pin the exact pickup location." })
             ]
           }),
           jsx(Link, { to: "/merchant", className: "btn-ghost btn-sm", children: "Back to dashboard" })

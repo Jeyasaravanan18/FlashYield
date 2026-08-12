@@ -112,12 +112,10 @@ export function AuthModal() {
         { email, password, role, firstName: fn, lastName: ln, phone: ph, merchantProfile },
         {
           onSuccess: (data) => {
-            setMessage(data.message || "Account created. Please verify your email.");
-            setMode("verify-email");
-            if (data.emailSent === false) {
-              setError(data.message || "Verification email could not be sent. Check SMTP settings.");
-              setMessage("");
-            }
+            closeAuthModal();
+            const userRole = data.user.role;
+            if (userRole === "merchant") navigate("/merchant");
+            else if (userRole === "admin") navigate("/admin");
           },
           onError: (err) => setError(getErrorMessage(err))
         }

@@ -355,11 +355,16 @@ const authService = {
       firstName,
       lastName,
       phone,
-      emailVerified: false
+      emailVerified: true
     });
 
     await createMerchantProfileForUser(user, merchantProfile);
-    const { delivery } = await issueOtp(user, "verify");
+    
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    user.refreshTokenHash = await hashValue(refreshToken);
+    user.lastLoginAt = new Date();
+    await user.save();
 
     await auditService.log({
       action: "user_register",
@@ -370,14 +375,13 @@ const authService = {
       metadata: { email: user.email, role: user.role },
       ipAddress: ipAddress || null
     });
-    logger.info({ userId: user._id, role: user.role }, "User registered; verification code issued");
+    logger.info({ userId: user._id, role: user.role }, "User registered");
 
     const userPayload = await buildUserPayload(user);
-    userPayload.verificationRequired = true;
     return {
       user: userPayload,
-      otpDelivery: delivery,
-      message: otpDeliveryMessage(delivery, "Account created. Check your email for a verification code.")
+      tokens: { accessToken, refreshToken },
+      message: "Account created successfully."
     };
   },
 
