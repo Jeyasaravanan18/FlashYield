@@ -62,6 +62,7 @@ export function MerchantProfileToolsPage() {
   const [storeHours, setStoreHours] = useState("");
   const [pickupInstructions, setPickupInstructions] = useState("");
   const [languages, setLanguages] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false);
   const [address, setAddress] = useState("");
   const [position, setPosition] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,7 +72,7 @@ export function MerchantProfileToolsPage() {
   const [isReversing, setIsReversing] = useState(false);
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || isInitialized) return;
     setStoreHours(data.storeHours || "");
     setPickupInstructions(data.pickupInstructions || "");
     setLanguages(data.languages || "Tamil, Hindi, Kannada, English");
@@ -81,7 +82,8 @@ export function MerchantProfileToolsPage() {
     } else {
       setPosition(null);
     }
-  }, [data]);
+    setIsInitialized(true);
+  }, [data, isInitialized]);
 
   const center = useMemo(() => {
     if (position) return [position.lat, position.lng];

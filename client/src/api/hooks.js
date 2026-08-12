@@ -136,7 +136,8 @@ function useMerchantListings(params) {
     queryFn: async () => {
       const res = await api.get("/listings/my", { params });
       return res.data;
-    }
+    },
+    refetchInterval: 30000
   });
 }
 function useCreateListing() {
@@ -237,7 +238,8 @@ function useMerchantProfile() {
     queryFn: async () => {
       const res = await api.get("/merchants/profile");
       return res.data;
-    }
+    },
+    refetchInterval: 30000
   });
 }
 function useCreateMerchantProfile() {
@@ -490,7 +492,8 @@ function useMerchantExports() {
 function useMerchantProfileTools() {
   return useQuery({
     queryKey: ["merchant", "profile-tools"],
-    queryFn: async () => (await api.get("/merchants/features/profile-tools")).data
+    queryFn: async () => (await api.get("/merchants/features/profile-tools")).data,
+    refetchInterval: 30000
   });
 }
 function useBatchPreview() {
@@ -514,7 +517,7 @@ function useCharts() {
   return useQuery({
     queryKey: ["merchant", "charts"],
     queryFn: async () => (await api.get("/merchants/features/charts")).data,
-    refetchInterval: 60000
+    refetchInterval: 10000
   });
 }
 function useMerchantNoShows() {

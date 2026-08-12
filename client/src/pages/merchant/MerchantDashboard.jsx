@@ -78,8 +78,9 @@ function MerchantDashboard() {
     });
   }
 
-  const activeListings = listings?.data || [];
-  const activeCount = activeListings.filter((listing) => listing.status !== "sold_out" && listing.status !== "expired" && new Date(listing.claimWindowEnd) > new Date()).length;
+  const allListings = listings?.data || [];
+  const activeListings = allListings.filter(l => l.status === "active" || l.status === "scheduled");
+  const activeCount = allListings.filter((listing) => listing.status !== "sold_out" && listing.status !== "expired" && new Date(listing.claimWindowEnd) > new Date()).length;
   const stats = dashboard.stats || {};
   const quickActions = [
     { to: "/merchant/listings/new", label: "Post Surplus", icon: Plus, note: "Create or schedule a new bundle.", primary: true },
@@ -421,8 +422,11 @@ function EmptyPanel({ title, subtitle }) {
 }
 
 function ListingRow({ listing, onCancel, isCancelling, onEdit }) {
-  const countdown = useCountdown(listing.claimWindowEnd);
-  const isClosed = listing.status === "sold_out" || listing.status === "expired" || listing.status === "cancelled" || countdown.expired;
+  const isScheduled = listing.status === "scheduled";
+  const targetTime = isScheduled ? listing.claimWindowStart : listing.claimWindowEnd;
+  const countdown = useCountdown(targetTime);
+  
+  const isClosed = listing.status === "sold_out" || listing.status === "expired" || listing.status === "cancelled" || (!isScheduled && countdown.expired);
   const claimed = listing.quantityTotal - listing.quantityAvailable;
   const isActive = listing.status === "active" && !countdown.expired;
   const progress = Math.min(100, Math.max(0, (claimed / Math.max(1, listing.quantityTotal)) * 100));
@@ -448,14 +452,19 @@ function ListingRow({ listing, onCancel, isCancelling, onEdit }) {
         ]
       }),
       jsx("div", {
-        className: `text-center font-display text-base font-bold ${isClosed ? "text-surface-400" : "text-brand-500"}`,
-        children: isClosed ? "CLOSED" : countdown.label.replace("h ", ":").replace("m", "")
+        className: "flex flex-col items-center justify-center",
+        children: isClosed ? jsx("span", { className: "font-display text-base font-bold text-surface-400", children: "CLOSED" }) : jsxs(Fragment, {
+          children: [
+            jsx("span", { className: "text-[10px] font-bold uppercase text-surface-400 mb-0.5", children: isScheduled ? "Starts in" : "Ends in" }),
+            jsx("span", { className: "font-display text-base font-bold text-brand-500", children: countdown.label })
+          ]
+        })
       }),
       jsx("div", {
         className: "flex justify-end gap-2",
-        children: isActive ? jsxs(Fragment, {
+        children: isActive || isScheduled ? jsxs(Fragment, {
           children: [
-            jsx("span", { className: "badge-success text-[10px]", children: "Live" }),
+            jsx("span", { className: `${isActive ? "badge-success" : "bg-blue-100 text-blue-700 font-bold uppercase px-2 py-0.5 rounded-md"} text-[10px] flex items-center justify-center`, children: isActive ? "Live" : "Scheduled" }),
             jsx("button", {
               onClick: onEdit,
               className: "p-1.5 rounded-lg text-surface-400 hover:text-brand-500 hover:bg-brand-50 transition-colors",

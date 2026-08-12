@@ -167,9 +167,9 @@ router.get("/metrics", async (req, res, next) => {
 router.get("/users", async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const role = req.query.role || "customer";
-    const query = { role };
+    const limit = parseInt(req.query.limit) || 500;
+    const query = {};
+    if (req.query.role) query.role = req.query.role;
 
     const total = await User.countDocuments(query);
     const users = await User.find(query)

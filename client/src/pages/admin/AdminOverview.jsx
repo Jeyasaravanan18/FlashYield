@@ -230,7 +230,8 @@ function OverviewTab() {
 }
 
 function UsersTab() {
-  const { data, isLoading } = useAdminUsers({});
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useAdminUsers({ page, limit: 20 });
   const updateMutation = useUpdateUserStatus();
   const unbanMutation = useUnbanUser();
   
@@ -269,6 +270,7 @@ function UsersTab() {
               <td className="px-5 py-4">
                 <div className="font-medium text-surface-900">{user.firstName} {user.lastName}</div>
                 <div className="text-xs text-surface-500">ID: {user._id}</div>
+                <div className="text-[10px] font-bold text-brand-500 uppercase mt-1">{user.role}</div>
               </td>
               <td className="px-5 py-4 text-surface-500">
                 <div>{user.email}</div>
@@ -306,6 +308,28 @@ function UsersTab() {
           </tbody>
         </table>
       </div>}
+      
+      {data && data.pagination && data.pagination.totalPages > 1 && (
+        <div className="border-t border-surface-200 px-5 py-3 flex items-center justify-between">
+          <button 
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="btn-ghost btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-surface-500 font-medium">
+            Page {data.pagination.page} of {data.pagination.totalPages}
+          </span>
+          <button 
+            onClick={() => setPage(p => Math.min(data.pagination.totalPages, p + 1))}
+            disabled={page === data.pagination.totalPages}
+            className="btn-ghost btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   </div>;
 }

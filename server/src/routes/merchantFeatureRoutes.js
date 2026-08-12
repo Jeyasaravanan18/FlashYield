@@ -431,7 +431,10 @@ router.post("/no-show/:customerId", authenticate, roleGuard("merchant"), async (
 router.get("/no-shows", authenticate, roleGuard("merchant"), async (req, res, next) => {
   try {
     const profile = await getMerchantOrThrow(req.user.userId);
-    const records = await MerchantNoShow.find({ merchantId: profile._id }).sort({ count: -1 }).lean();
+    const records = await MerchantNoShow.find({ merchantId: profile._id })
+      .populate("customerId", "firstName lastName email")
+      .sort({ count: -1 })
+      .lean();
     res.json({ records });
   } catch (err) {
     next(err);
@@ -568,12 +571,27 @@ router.delete("/schedule/:id", authenticate, roleGuard("merchant"), async (req, 
 router.get("/charts", authenticate, roleGuard("merchant"), async (req, res, next) => {
   try {
     const profile = await getMerchantOrThrow(req.user.userId);
-    const claims = await Claim.find({ merchantId: profile._id }).lean();
-    const revenueRecovered = claims.reduce((sum, claim) => sum + (claim.discountedPrice || 0), 0);
+    
+    // Find listings for this merchant
+    const listings = await Listing.find({ merchantId: profile._id }).select("_id").lean();
+    const listingIds = listings.map(l => l._id);
+    
+    // Find all claims for those listings
+    const claims = await Claim.find({ listingId: { $in: listingIds } }).populate("listingId", "discountedPrice").lean();
+    
+    // Calculate total revenue from the populated listing discountedPrice
+    const revenueRecovered = claims.reduce((sum, claim) => {
+      if (claim.status !== "collected") return sum;
+      const price = claim.listingId?.discountedPrice || 0;
+      const quantity = claim.quantity || 1;
+      return sum + (price * quantity);
+    }, 0);
+
     const byHour = new Array(24).fill(0);
     claims.forEach((claim) => {
       byHour[new Date(claim.createdAt || Date.now()).getHours()] += 1;
     });
+    
     const bestSellingWindows = byHour.map((count, hour) => ({ hour, count })).sort((a, b) => b.count - a.count).slice(0, 5);
     res.json({ revenueRecovered, totalClaims: claims.length, byHour, bestSellingWindows });
   } catch (err) {
