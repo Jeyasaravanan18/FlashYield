@@ -17,7 +17,7 @@ test.describe('Food Saver - Main Flow', () => {
             claimWindowStart: new Date(Date.now() - 3600000).toISOString(),
             claimWindowEnd: new Date(Date.now() + 3600000).toISOString(),
             status: 'active',
-            imageUrl: '/3d-icons/3d_food_basket.png',
+            imageUrl: '',
             distance: 500,
             merchant: {
               businessName: 'Test Bakery',
@@ -58,7 +58,7 @@ test.describe('Food Saver - Main Flow', () => {
         claimWindowStart: new Date(Date.now() - 3600000).toISOString(),
         claimWindowEnd: new Date(Date.now() + 3600000).toISOString(),
         status: 'active',
-        imageUrl: '/3d-icons/3d_food_basket.png',
+        imageUrl: '',
         merchant: {
           businessName: 'Test Bakery',
           address: '123 Main St',

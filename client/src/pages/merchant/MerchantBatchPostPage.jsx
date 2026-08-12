@@ -27,7 +27,7 @@ function parseCsv(text) {
       originalPrice: Number(row.originalPrice) || 10,
       discountedPrice: Number(row.discountedPrice) || 5,
       quantityTotal: Number(row.quantityTotal) || 1,
-      imageUrl: row.imageUrl || "/3d-icons/3d_food_basket.png",
+      imageUrl: row.imageUrl || "",
       claimWindowStart: row.claimWindowStart || now.toISOString(),
       claimWindowEnd: row.claimWindowEnd || endOfDay.toISOString()
     };

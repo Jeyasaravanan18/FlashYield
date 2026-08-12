@@ -69,7 +69,7 @@ function ListingDetailPage() {
   };
     const isUnsplash = listing.imageUrl && listing.imageUrl.includes("unsplash.com");
     const displayImageUrl = isUnsplash 
-      ? "/3d-icons/3d_food_basket.png" 
+      ? "" 
       : listing.imageUrl;
 
   return /* @__PURE__ */ jsxs("div", { className: "page-container max-w-4xl animate-fade-in pb-14", children: [

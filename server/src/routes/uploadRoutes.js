@@ -39,7 +39,7 @@ router.post(
       // If Cloudinary is not configured, send a local fallback mock URL or error
       if (!env.CLOUDINARY_CLOUD_NAME) {
         return res.status(200).json({
-          url: "/3d-icons/3d_food_basket.png",
+          url: "",
           message: "Cloudinary not configured. Fallback image returned."
         });
       }

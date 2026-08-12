@@ -414,7 +414,7 @@ function ListingCard({ listing }) {
   const isClosed = listing.status === "sold_out" || countdown.expired;
   const isUnsplash = listing.imageUrl && listing.imageUrl.includes("unsplash.com");
   const displayImageUrl = isUnsplash 
-    ? "/3d-icons/3d_food_basket.png" 
+    ? "" 
     : listing.imageUrl;
   return /* @__PURE__ */ jsxs("div", { className: `card flex flex-col sm:flex-row overflow-hidden group ${isClosed ? "opacity-50" : ""}`, children: [
     /* @__PURE__ */ jsx("div", { className: "w-full sm:w-56 h-48 sm:h-auto bg-surface-100 flex items-center justify-center text-5xl shrink-0 overflow-hidden relative", children: displayImageUrl ? /* @__PURE__ */ jsx("img", { src: displayImageUrl, alt: listing.title, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" }) : /* @__PURE__ */ jsx("span", { children: listing.category === "bakery" ? "\u{1F950}" : listing.category === "prepared_meals" ? "\u{1F96A}" : "\u{1F37D}\uFE0F" }) }),

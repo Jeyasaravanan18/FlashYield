@@ -17,7 +17,7 @@ import {
 import { useCameraSuggest, useCreateListing, useDuplicateLastListing, useMerchantTemplates, usePricingSuggestion, useUploadImage } from "../../api/hooks";
 import { getErrorMessage } from "../../lib/api";
 
-const fallbackImage = "/3d-icons/3d_food_basket.png";
+const fallbackImage = "";
 const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "nut-free", "dairy-free", "halal"];
 const categories = [
   ["bakery", "Bakery"],
