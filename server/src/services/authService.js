@@ -402,10 +402,7 @@ const authService = {
     if (user.status === "suspended") {
       throw new ForbiddenError("Your account has been suspended. Please contact support.");
     }
-    if (!user.emailVerified) {
-      const { delivery } = await issueOtp(user, "verify");
-      throw new BadRequestError(otpDeliveryMessage(delivery, "Please verify your email before signing in. A new code has been sent."));
-    }
+    // Bypassed email verification check for instant onboarding
 
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
