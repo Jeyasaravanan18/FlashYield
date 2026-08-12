@@ -158,13 +158,38 @@ async function getMailTransport(overrides = {}) {
 async function sendOtpEmail(to, purpose, code) {
   const message = buildOtpMessage({ purpose, code, minutes: OTP_TTL_MINUTES });
   const subject = purpose === "reset" ? "Reset your FlashYield password" : "Verify your FlashYield account";
-  if (!isResendConfigured() && !isSmtpConfigured()) {
+  if (!env.GOOGLE_APPS_SCRIPT_URL && !isResendConfigured() && !isSmtpConfigured()) {
     logger.warn({ to, purpose }, "Email delivery not configured; OTP cannot be emailed");
     if (env.NODE_ENV !== "production") {
       logger.warn({ to, purpose, code }, "OTP logged for local development");
     }
     return { sent: false, reason: "not_configured" };
   }
+  
+  if (env.GOOGLE_APPS_SCRIPT_URL) {
+    try {
+      const response = await fetch(env.GOOGLE_APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to,
+          subject,
+          text: message
+        })
+      });
+      if (response.ok) {
+        return { sent: true, provider: "google_apps_script" };
+      }
+      const errorText = await response.text().catch(() => "");
+      logger.warn({ to, purpose, status: response.status, errorText: errorText.slice(0, 500) }, "Google Apps Script email delivery failed");
+    } catch (err) {
+      logger.warn({ err: redactMailError(err), to, purpose }, "Google Apps Script email attempt failed");
+    }
+    if (!isResendConfigured() && !isSmtpConfigured()) {
+      return { sent: false, reason: "send_failed", provider: "google_apps_script" };
+    }
+  }
+
   if (isResendConfigured()) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
