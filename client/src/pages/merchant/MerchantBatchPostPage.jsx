@@ -27,7 +27,7 @@ function parseCsv(text) {
       originalPrice: Number(row.originalPrice) || 10,
       discountedPrice: Number(row.discountedPrice) || 5,
       quantityTotal: Number(row.quantityTotal) || 1,
-      imageUrl: row.imageUrl || "https://images.unsplash.com/photo-1620189507195-68309c04c4d0?auto=format&fit=crop&q=80&w=600",
+      imageUrl: row.imageUrl || "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20and%20Drink/Takeout%20Box.png",
       claimWindowStart: row.claimWindowStart || now.toISOString(),
       claimWindowEnd: row.claimWindowEnd || endOfDay.toISOString()
     };

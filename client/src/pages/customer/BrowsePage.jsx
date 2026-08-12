@@ -412,8 +412,12 @@ function ListingCard({ listing }) {
   const countdown = useCountdown(listing.claimWindowEnd);
   const discount = listing.originalPrice > 0 ? Math.round((listing.originalPrice - listing.discountedPrice) / listing.originalPrice * 100) : 0;
   const isClosed = listing.status === "sold_out" || countdown.expired;
+  const isUnsplash = listing.imageUrl && listing.imageUrl.includes("unsplash.com");
+  const displayImageUrl = isUnsplash 
+    ? "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20and%20Drink/Takeout%20Box.png" 
+    : listing.imageUrl;
   return /* @__PURE__ */ jsxs("div", { className: `card flex flex-col sm:flex-row overflow-hidden group ${isClosed ? "opacity-50" : ""}`, children: [
-    /* @__PURE__ */ jsx("div", { className: "w-full sm:w-56 h-48 sm:h-auto bg-surface-100 flex items-center justify-center text-5xl shrink-0 overflow-hidden relative", children: listing.imageUrl ? /* @__PURE__ */ jsx("img", { src: listing.imageUrl, alt: listing.title, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" }) : /* @__PURE__ */ jsx("span", { children: listing.category === "bakery" ? "\u{1F950}" : listing.category === "prepared_meals" ? "\u{1F96A}" : "\u{1F37D}\uFE0F" }) }),
+    /* @__PURE__ */ jsx("div", { className: "w-full sm:w-56 h-48 sm:h-auto bg-surface-100 flex items-center justify-center text-5xl shrink-0 overflow-hidden relative", children: displayImageUrl ? /* @__PURE__ */ jsx("img", { src: displayImageUrl, alt: listing.title, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" }) : /* @__PURE__ */ jsx("span", { children: listing.category === "bakery" ? "\u{1F950}" : listing.category === "prepared_meals" ? "\u{1F96A}" : "\u{1F37D}\uFE0F" }) }),
     /* @__PURE__ */ jsxs("div", { className: "p-6 flex flex-col flex-1", children: [
       /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-start gap-4 mb-1", children: [
         /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 text-xs font-medium text-surface-500", children: [

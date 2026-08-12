@@ -67,6 +67,11 @@ function ListingDetailPage() {
       onSuccess: () => navigate("/claims")
     });
   };
+    const isUnsplash = listing.imageUrl && listing.imageUrl.includes("unsplash.com");
+    const displayImageUrl = isUnsplash 
+      ? "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20and%20Drink/Takeout%20Box.png" 
+      : listing.imageUrl;
+
   return /* @__PURE__ */ jsxs("div", { className: "page-container max-w-4xl animate-fade-in pb-14", children: [
     /* @__PURE__ */ jsxs("button", { onClick: () => navigate(-1), className: "btn-ghost mb-6 text-sm", children: [
       /* @__PURE__ */ jsx(ArrowLeft, { className: "w-4 h-4" }),
@@ -74,14 +79,14 @@ function ListingDetailPage() {
     ] }),
     /* @__PURE__ */ jsx("div", { className: "card overflow-hidden", children: /* @__PURE__ */ jsxs("div", { className: "grid md:grid-cols-2", children: [
       /* @__PURE__ */ jsxs("div", { className: "relative h-64 md:h-full min-h-[280px] bg-surface-100", children: [
-        listing.imageUrl ? /* @__PURE__ */ jsx(
+        displayImageUrl ? /* @__PURE__ */ jsx(
           "img",
           {
-            src: listing.imageUrl,
+            src: displayImageUrl,
             alt: listing.title,
             className: "w-full h-full object-cover",
             onError: (e) => {
-              e.target.src = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop";
+              e.target.src = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20and%20Drink/Takeout%20Box.png";
             }
           }
         ) : /* @__PURE__ */ jsx("div", { className: "w-full h-full flex items-center justify-center text-8xl", children: listing.category === "bakery" ? "🥐" : listing.category === "prepared_meals" ? "🥘" : "🍽️" }),

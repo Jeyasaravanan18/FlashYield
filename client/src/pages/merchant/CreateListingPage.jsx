@@ -17,7 +17,7 @@ import {
 import { useCameraSuggest, useCreateListing, useDuplicateLastListing, useMerchantTemplates, usePricingSuggestion, useUploadImage } from "../../api/hooks";
 import { getErrorMessage } from "../../lib/api";
 
-const fallbackImage = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80";
+const fallbackImage = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20and%20Drink/Takeout%20Box.png";
 const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "nut-free", "dairy-free", "halal"];
 const categories = [
   ["bakery", "Bakery"],
